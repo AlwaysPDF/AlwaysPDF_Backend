@@ -1,0 +1,8 @@
+{
+    "watch": ["*.ts"],
+    "ext": "ts",
+    "execMap": {
+    "ts": "ts-node-esm"
+  }
+}
+  
