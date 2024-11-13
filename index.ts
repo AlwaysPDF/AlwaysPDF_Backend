@@ -133,6 +133,8 @@ const start = async () => {
   }
 };
 
+start();
+
 // const start = async () => {
 //   const mongoUrl = process.env.MONGO_URL;
 
@@ -197,5 +199,3 @@ const start = async () => {
 //     console.log(error);
 //   }
 // };
-
-start();

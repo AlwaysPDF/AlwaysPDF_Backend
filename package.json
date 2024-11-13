@@ -7,16 +7,10 @@
   "scripts": {
     "build": "rimraf dist && tsc",
     "start": "npm run build && node ./dist/index.js",
-    "ts.check": "tsc --project tsconfig.json",
-    "add-build": "git add dist",
     "dev": "nodemon --exec vite-node index.ts",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "vercel-build": "npm run build && cp -r dist/ /vercel/output"
   },
-  "pre-commit": [
-    "ts.check",
-    "build",
-    "add-build"
-  ],
   "engines": {
     "node": ">=16"
   },
