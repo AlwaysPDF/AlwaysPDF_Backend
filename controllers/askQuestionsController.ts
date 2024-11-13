@@ -23,14 +23,22 @@ const generateTempFilename = () => {
 
 // Ensure all necessary temporary directories exist
 const ensureTempDirectories = () => {
-  const tempDirs = ["/tmp/officeParserTemp", "/tmp/officeParserTemp/tempfiles"];
+  const tempDirs = [
+    '/tmp/officeParserTemp',
+    '/tmp/officeParserTemp/tempfiles'
+  ];
 
-  tempDirs.forEach((dir) => {
-    if (!fs.existsSync(dir)) {
-      fs.mkdirSync(dir, { recursive: true });
-      console.log(`Created directory: ${dir}`);
+  for (const dir of tempDirs) {
+    try {
+      if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, { recursive: true });
+        console.log(`Created directory: ${dir}`);
+      }
+    } catch (error) {
+      console.error(`Error creating directory: ${dir}`, error);
+      throw error;
     }
-  });
+  }
 };
 
 // Cleanup function to ensure temp file is deleted
@@ -75,7 +83,7 @@ const cleanupTempFile = (filePath: string) => {
 const cleanupTempDirectory = (dirPath: string) => {
   try {
     if (fs.existsSync(dirPath)) {
-      fs.readdirSync(dirPath).forEach((file) => {
+      fs.readdirSync(dirPath).forEach(file => {
         const curPath = path.join(dirPath, file);
         if (fs.lstatSync(curPath).isDirectory()) {
           cleanupTempDirectory(curPath);
@@ -83,6 +91,7 @@ const cleanupTempDirectory = (dirPath: string) => {
           fs.unlinkSync(curPath);
         }
       });
+      fs.rmdirSync(dirPath);
     }
   } catch (error) {
     console.error(`Error cleaning up directory: ${dirPath}`, error);
@@ -94,8 +103,9 @@ const Upload = async (req: Request, res: Response) => {
   let tempFilePath: string | "" = "";
 
   try {
-    // Ensure temporary directories exist
-    ensureTempDirectories();
+   // Ensure temporary directories exist
+   await ensureTempDirectories();
+
 
     // Validate document exists
     const document = await DocumentUpload.findOne({ _id: documentId });
@@ -144,9 +154,9 @@ const Upload = async (req: Request, res: Response) => {
     pdfText = extractedText.toString();
     console.log(pdfText);
 
-    // Clean up immediately after extraction
+    // Clean up temporary files
     cleanupTempFile(tempFilePath);
-    cleanupTempDirectory('/tmp/officeParserTemp');
+    await cleanupTempDirectory('/tmp/officeParserTemp');
 
     return res.status(StatusCodes.OK).json({
       success: true,
@@ -158,10 +168,17 @@ const Upload = async (req: Request, res: Response) => {
     if (tempFilePath) {
       cleanupTempFile(tempFilePath);
     }
-    cleanupTempDirectory('/tmp/officeParserTemp');
+    await cleanupTempDirectory('/tmp/officeParserTemp');
 
     // Safe error message checking
     const errorMessage = error?.message || "";
+
+    // Log error for debugging
+    console.error("PDF processing error:", {
+      error: error,
+      message: errorMessage,
+      stack: error?.stack,
+    });
 
     // Handle specific error cases
     if (
@@ -172,13 +189,6 @@ const Upload = async (req: Request, res: Response) => {
         .status(StatusCodes.BAD_REQUEST)
         .json({ success: false, msg: "Invalid PDF format or corrupted file." });
     }
-
-    // Log error for debugging
-    console.error("PDF processing error:", {
-      error: error,
-      message: errorMessage,
-      stack: error?.stack,
-    });
 
     return res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
       success: false,
