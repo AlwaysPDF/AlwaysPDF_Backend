@@ -7,6 +7,7 @@ import OpenAI from "openai";
 import { StatusCodes } from "http-status-codes";
 import DocumentUpload from "../models/DocumentUpload.js";
 import { OPENAI_API_KEY } from "../utils/keys.js";
+import crypto from "crypto";
 
 
 // import { BadRequestError } from "../errors/index.ts";
@@ -16,20 +17,37 @@ const openai = new OpenAI({ apiKey: OPENAI_API_KEY });
 
 let pdfText: string | null = null;
 
-// Function to download the PDF from the URL
-const downloadPDF = async (url: string, outputPath: string): Promise<void> => {
-  const response = await axios({
-    url,
-    method: "GET",
-    responseType: "stream",
-  });
-  await new Promise((resolve, reject) => {
-    const stream = fs.createWriteStream(outputPath);
-    response.data.pipe(stream);
-    stream.on("finish", resolve);
-    stream.on("error", reject);
-  });
+// Generate a unique filename for each upload
+const generateTempFilename = () => {
+  return `pdf-${crypto.randomBytes(8).toString('hex')}.pdf`;
 };
+
+// Cleanup function to ensure temp file is deleted
+const cleanupTempFile = (filePath: string) => {
+  try {
+    if (fs.existsSync(filePath)) {
+      fs.unlinkSync(filePath);
+      console.log(`Cleaned up temporary file: ${filePath}`);
+    }
+  } catch (error) {
+    console.error(`Error cleaning up temporary file: ${filePath}`, error);
+  }
+};
+
+// Function to download the PDF from the URL
+// const downloadPDF = async (url: string, outputPath: string): Promise<void> => {
+//   const response = await axios({
+//     url,
+//     method: "GET",
+//     responseType: "stream",
+//   });
+//   await new Promise((resolve, reject) => {
+//     const stream = fs.createWriteStream(outputPath);
+//     response.data.pipe(stream);
+//     stream.on("finish", resolve);
+//     stream.on("error", reject);
+//   });
+// };
 
 const extractTextFromPDF = async (pdfPath: string): Promise<any> => {
   // return new Promise((resolve, reject) => {
@@ -43,88 +61,160 @@ const extractTextFromPDF = async (pdfPath: string): Promise<any> => {
 };
 
 const Upload = async (req: Request, res: Response) => {
-  // const { pdfUrl } = req.body;
   const { documentId } = req.params;
-
-  // if (!pdfUrl) {
-  //   return res
-  //     .status(StatusCodes.NOT_FOUND)
-  //     .json({ success: false, msg: "No PDF URL provided." });
-  // }
-
-  const document = await DocumentUpload.findOne({ _id: documentId });
-
-  if (!document) {
-    return res
-      .status(StatusCodes.NOT_FOUND)
-      .json({ success: false, msg: "No PDF URL provided." });
-  }
-
-  const pdfUrl = document.fileUrl;
-  console.log(pdfUrl);
-
-  if (!pdfUrl) {
-    return res
-      .status(StatusCodes.NOT_FOUND)
-      .json({ success: false, msg: "No PDF URL provided." });
-  }
-
-  // if (pdfUrl !== document.fileUrl) {
-  //   throw new BadRequestError("Error with the Url");
-
-  // }
-
-  // Ensure the uploads directory exists
-  // const uploadsDir = path.join(__dirname, "uploads");
-  const uploadsDir = path.resolve("/tmp");
-  if (!fs.existsSync(uploadsDir)) {
-    console.log(`Creating directory: ${uploadsDir}`);
-    fs.mkdirSync(uploadsDir);
-  } else {
-    console.log(`Directory already exists: ${uploadsDir}`);
-  }
-
-  const outputPath = path.join(uploadsDir, "downloaded.pdf");
+  let tempFilePath: string | null = null;
 
   try {
-    // Download the PDF
-    // console.log(`Downloading PDF from URL: ${pdfUrl} to path: ${outputPath}`);
-    await downloadPDF(pdfUrl, outputPath);
-
-    if (!fs.existsSync(outputPath)) {
-      throw new Error(`File not found at path: ${outputPath}`);
+    // Validate document exists
+    const document = await DocumentUpload.findOne({ _id: documentId });
+    if (!document?.fileUrl) {
+      return res
+        .status(StatusCodes.NOT_FOUND)
+        .json({ success: false, msg: "No valid document or URL found." });
     }
 
-    pdfText = await extractTextFromPDF(outputPath);
+    // Generate unique filename for this upload
+    const tempFileName = generateTempFilename();
+    tempFilePath = path.join('/tmp', tempFileName);
 
-    // Extract text from the downloaded PDF
-    console.log(`Extracting text from downloaded PDF at path: ${outputPath}`);
-    console.log(pdfText);
+    // Download PDF
+    await axios({
+      url: document.fileUrl,
+      method: "GET",
+      responseType: "stream",
+    }).then(response => 
+      new Promise((resolve, reject) => {
+        const writeStream = fs.createWriteStream(tempFilePath!);
+        response.data.pipe(writeStream);
+        writeStream.on('finish', resolve);
+        writeStream.on('error', reject);
+      })
+    );
 
-    // Clean up the downloaded file
-    // console.log(`Deleting downloaded PDF from path: ${outputPath}`);
-    fs.unlinkSync(outputPath);
+    // Verify file exists and extract text
+    if (!fs.existsSync(tempFilePath)) {
+      throw new Error('Downloaded file not found');
+    }
 
-    res.status(StatusCodes.OK).json({
+    const extractedText = await parseOfficeAsync(tempFilePath);
+    // Clean up immediately after extraction
+    cleanupTempFile(tempFilePath);
+
+    return res.status(StatusCodes.OK).json({
       success: true,
-      msg: "PDF downloaded and text extracted successfully.",
-      pdfText,
+      msg: "PDF processed successfully",
+      pdfText: extractedText.toString()
     });
-  } catch (error: any) {
-    // console.error(`Error processing PDF: ${error.message}`);
 
-    // Handle specific errors like "FormatError"
+  } catch (error: any) {
+    // Ensure cleanup happens even if there's an error
+    if (tempFilePath) {
+      cleanupTempFile(tempFilePath);
+    }
+
+    // Handle specific error cases
     if (error.message.includes("bad XRef entry")) {
       return res
         .status(StatusCodes.BAD_REQUEST)
         .json({ success: false, msg: "Invalid PDF format or corrupted file." });
     }
 
-    res
+    // Log error for debugging
+    console.error("PDF processing error:", error);
+
+    return res
       .status(StatusCodes.INTERNAL_SERVER_ERROR)
-      .json({ success: false, msg: "Error processing PDF." });
+      .json({ 
+        success: false, 
+        msg: "Error processing PDF.",
+        error: error.message 
+      });
   }
 };
+
+// const Upload = async (req: Request, res: Response) => {
+//   // const { pdfUrl } = req.body;
+//   const { documentId } = req.params;
+
+//   // if (!pdfUrl) {
+//   //   return res
+//   //     .status(StatusCodes.NOT_FOUND)
+//   //     .json({ success: false, msg: "No PDF URL provided." });
+//   // }
+
+//   const document = await DocumentUpload.findOne({ _id: documentId });
+
+//   if (!document) {
+//     return res
+//       .status(StatusCodes.NOT_FOUND)
+//       .json({ success: false, msg: "No PDF URL provided." });
+//   }
+
+//   const pdfUrl = document.fileUrl;
+//   console.log(pdfUrl);
+
+//   if (!pdfUrl) {
+//     return res
+//       .status(StatusCodes.NOT_FOUND)
+//       .json({ success: false, msg: "No PDF URL provided." });
+//   }
+
+//   // if (pdfUrl !== document.fileUrl) {
+//   //   throw new BadRequestError("Error with the Url");
+
+//   // }
+
+//   // Ensure the uploads directory exists
+//   // const uploadsDir = path.join(__dirname, "uploads");
+//   const uploadsDir = path.resolve("/tmp");
+//   if (!fs.existsSync(uploadsDir)) {
+//     console.log(`Creating directory: ${uploadsDir}`);
+//     fs.mkdirSync(uploadsDir);
+//   } else {
+//     console.log(`Directory already exists: ${uploadsDir}`);
+//   }
+
+//   const outputPath = path.join(uploadsDir, "downloaded.pdf");
+
+//   try {
+//     // Download the PDF
+//     // console.log(`Downloading PDF from URL: ${pdfUrl} to path: ${outputPath}`);
+//     await downloadPDF(pdfUrl, outputPath);
+
+//     if (!fs.existsSync(outputPath)) {
+//       throw new Error(`File not found at path: ${outputPath}`);
+//     }
+
+//     pdfText = await extractTextFromPDF(outputPath);
+
+//     // Extract text from the downloaded PDF
+//     console.log(`Extracting text from downloaded PDF at path: ${outputPath}`);
+//     console.log(pdfText);
+
+//     // Clean up the downloaded file
+//     // console.log(`Deleting downloaded PDF from path: ${outputPath}`);
+//     fs.unlinkSync(outputPath);
+
+//     res.status(StatusCodes.OK).json({
+//       success: true,
+//       msg: "PDF downloaded and text extracted successfully.",
+//       pdfText,
+//     });
+//   } catch (error: any) {
+//     // console.error(`Error processing PDF: ${error.message}`);
+
+//     // Handle specific errors like "FormatError"
+//     if (error.message.includes("bad XRef entry")) {
+//       return res
+//         .status(StatusCodes.BAD_REQUEST)
+//         .json({ success: false, msg: "Invalid PDF format or corrupted file." });
+//     }
+
+//     res
+//       .status(StatusCodes.INTERNAL_SERVER_ERROR)
+//       .json({ success: false, msg: "Error processing PDF." });
+//   }
+// };
 
 const askQuestion = async (
   req: Request,
