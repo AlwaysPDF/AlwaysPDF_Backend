@@ -156,7 +156,7 @@ const Upload = async (req: Request, res: Response) => {
 
     // Clean up temporary files
     cleanupTempFile(tempFilePath);
-    await cleanupTempDirectory('/tmp/officeParserTemp');
+    // await cleanupTempDirectory('/tmp/officeParserTemp');
 
     return res.status(StatusCodes.OK).json({
       success: true,
@@ -168,7 +168,7 @@ const Upload = async (req: Request, res: Response) => {
     if (tempFilePath) {
       cleanupTempFile(tempFilePath);
     }
-    await cleanupTempDirectory('/tmp/officeParserTemp');
+    // await cleanupTempDirectory('/tmp/officeParserTemp');
 
     // Safe error message checking
     const errorMessage = error?.message || "";
