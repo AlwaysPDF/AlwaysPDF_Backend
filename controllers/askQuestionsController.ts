@@ -9,7 +9,6 @@ import DocumentUpload from "../models/DocumentUpload.js";
 import { OPENAI_API_KEY } from "../utils/keys.js";
 import crypto from "crypto";
 
-
 // import { BadRequestError } from "../errors/index.ts";
 
 // / New (i.e., OpenAI NodeJS SDK v4)
@@ -19,7 +18,7 @@ let pdfText: string | null = null;
 
 // Generate a unique filename for each upload
 const generateTempFilename = () => {
-  return `pdf-${crypto.randomBytes(8).toString('hex')}.pdf`;
+  return `pdf-${crypto.randomBytes(8).toString("hex")}.pdf`;
 };
 
 // Cleanup function to ensure temp file is deleted
@@ -49,16 +48,16 @@ const cleanupTempFile = (filePath: string) => {
 //   });
 // };
 
-const extractTextFromPDF = async (pdfPath: string): Promise<any> => {
-  // return new Promise((resolve, reject) => {
-  try {
-    const data = await parseOfficeAsync(pdfPath);
-    pdfText = data.toString();
-    return data.toString();
-  } catch (error) {
-    return error;
-  }
-};
+// const extractTextFromPDF = async (pdfPath: string): Promise<any> => {
+//   // return new Promise((resolve, reject) => {
+//   try {
+//     const data = await parseOfficeAsync(pdfPath);
+//     pdfText = data.toString();
+//     return data.toString();
+//   } catch (error) {
+//     return error;
+//   }
+// };
 
 const Upload = async (req: Request, res: Response) => {
   const { documentId } = req.params;
@@ -67,45 +66,57 @@ const Upload = async (req: Request, res: Response) => {
   try {
     // Validate document exists
     const document = await DocumentUpload.findOne({ _id: documentId });
-    if (!document?.fileUrl) {
+    if (!document) {
       return res
         .status(StatusCodes.NOT_FOUND)
         .json({ success: false, msg: "No valid document or URL found." });
     }
 
+    const pdfUrl = document.fileUrl;
+
+    if (!pdfUrl) {
+      return res
+        .status(StatusCodes.NOT_FOUND)
+        .json({ success: false, msg: "No PDF URL provided." });
+    }
+
     // Generate unique filename for this upload
     const tempFileName = generateTempFilename();
-    tempFilePath = path.join('/tmp', tempFileName);
+    tempFilePath = path.join("/tmp", tempFileName);
 
     // Download PDF
     await axios({
-      url: document.fileUrl,
+      url: pdfUrl,
       method: "GET",
       responseType: "stream",
-    }).then(response => 
-      new Promise((resolve, reject) => {
-        const writeStream = fs.createWriteStream(tempFilePath!);
-        response.data.pipe(writeStream);
-        writeStream.on('finish', resolve);
-        writeStream.on('error', reject);
-      })
+    }).then(
+      (response) =>
+        new Promise((resolve, reject) => {
+          const writeStream = fs.createWriteStream(tempFilePath!);
+          response.data.pipe(writeStream);
+          writeStream.on("finish", resolve);
+          writeStream.on("error", reject);
+        })
     );
 
     // Verify file exists and extract text
     if (!fs.existsSync(tempFilePath)) {
-      throw new Error('Downloaded file not found');
+      throw new Error("Downloaded file not found");
     }
 
     const extractedText = await parseOfficeAsync(tempFilePath);
+    pdfText = extractedText.toString();
+    console.log(pdfText);
+    
+
     // Clean up immediately after extraction
     cleanupTempFile(tempFilePath);
 
     return res.status(StatusCodes.OK).json({
       success: true,
       msg: "PDF processed successfully",
-      pdfText: extractedText.toString()
+      pdfText: extractedText.toString(),
     });
-
   } catch (error: any) {
     // Ensure cleanup happens even if there's an error
     if (tempFilePath) {
@@ -122,13 +133,11 @@ const Upload = async (req: Request, res: Response) => {
     // Log error for debugging
     console.error("PDF processing error:", error);
 
-    return res
-      .status(StatusCodes.INTERNAL_SERVER_ERROR)
-      .json({ 
-        success: false, 
-        msg: "Error processing PDF.",
-        error: error.message 
-      });
+    return res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
+      success: false,
+      msg: "Error processing PDF.",
+      error: error.message,
+    });
   }
 };
 
