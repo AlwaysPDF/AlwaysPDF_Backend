@@ -123,20 +123,27 @@ const Upload = async (req: Request, res: Response) => {
       cleanupTempFile(tempFilePath);
     }
 
+    // Safe error message checking
+    const errorMessage = error?.message || '';
+    
     // Handle specific error cases
-    if (error.message.includes("bad XRef entry")) {
+    if (typeof errorMessage === 'string' && errorMessage.includes("bad XRef entry")) {
       return res
         .status(StatusCodes.BAD_REQUEST)
         .json({ success: false, msg: "Invalid PDF format or corrupted file." });
     }
 
-    // Log error for debugging
-    console.error("PDF processing error:", error);
+     // Log error for debugging
+     console.error("PDF processing error:", {
+      error: error,
+      message: errorMessage,
+      stack: error?.stack
+    });
 
     return res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
       success: false,
       msg: "Error processing PDF.",
-      error: error.message,
+      error: error.message || 'Unknown error occurred',
     });
   }
 };
