@@ -6,6 +6,7 @@ import { StatusCodes } from "http-status-codes";
 import { BadRequestError, NotFoundError } from "../errors/index.js";
 
 import axios from "axios";
+import { GOOGLE_DRIVE_APIKEY } from "../utils/keys.js";
 // import fs from "fs" ;
 // import path from "path";
 
@@ -74,7 +75,9 @@ const uploadDocumentByURL = async (req: Request, res: Response) => {
     throw new NotFoundError("User not found");
   }
 
-  const apiKey = "AIzaSyDaVnoZOxgYJ6x2ifWCk5vUexMUFe-vgm8"; // Replace with your API key
+  const apiKey = GOOGLE_DRIVE_APIKEY; 
+  console.log(apiKey);
+  
 
   const apiUrl = `https://www.googleapis.com/drive/v3/files/${fileId}?key=${apiKey}&fields=name,size,mimeType`;
 

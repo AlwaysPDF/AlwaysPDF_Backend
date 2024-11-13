@@ -110,9 +110,9 @@
     "noEmit": false,
     // "emitDeclarationOnly": true,
     // "composite": true,
-    "rootDir": "./",
+    "rootDir": ".",
     "moduleResolution": "node",
-    "outDir": "./dist",
+    "outDir": "dist",
     "baseUrl": ".",
     "noImplicitAny": true,
     "paths": {

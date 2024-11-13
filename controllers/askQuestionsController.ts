@@ -1,27 +1,20 @@
-// src/index.ts
 import { Request, Response } from "express";
-import multer from "multer";
-// import bodyParser from 'body-parser';
 import { parseOfficeAsync } from "officeparser";
 import axios from "axios";
 import fs from "fs";
 import path from "path";
-import { OpenAI } from "openai";
+import OpenAI from "openai";
 import { StatusCodes } from "http-status-codes";
 import DocumentUpload from "../models/DocumentUpload.js";
+import { OPENAI_API_KEY } from "../utils/keys.js";
+
+
 // import { BadRequestError } from "../errors/index.ts";
 
-// const upload = multer({ dest: "uploads/" });
+// / New (i.e., OpenAI NodeJS SDK v4)
+const openai = new OpenAI({ apiKey: OPENAI_API_KEY });
 
 let pdfText: string | null = null;
-
-// / New (i.e., OpenAI NodeJS SDK v4)
-const openaiKey = process.env.OPENAI_APIKEY;
-
-const openai = new OpenAI({
-  // apiKey: process.env.OPENAI_APIKEY ? process.env.OPENAI_APIKEY : "",
-  apiKey: openaiKey
-});
 
 // Function to download the PDF from the URL
 const downloadPDF = async (url: string, outputPath: string): Promise<void> => {

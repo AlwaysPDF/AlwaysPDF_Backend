@@ -4,6 +4,7 @@ import {
   isTokenValid,
   attachCookiesToResponse,
 } from "./jwt.js";
+import { OPENAI_API_KEY, GOOGLE_DRIVE_APIKEY } from "./keys.js";
 import createTokenUser from "./createTokenUser.js";
 // import createTokenAdmin from "./createTokenAdmin";
 import checkPermissions from "./checkPermissions.js";
@@ -18,6 +19,8 @@ export {
   createAdminJWT,
   isTokenValid,
   attachCookiesToResponse,
+  OPENAI_API_KEY,
+  GOOGLE_DRIVE_APIKEY,
   createTokenUser,
   // createTokenAdmin,
   checkPermissions,
