@@ -139,6 +139,6 @@
 //   "include": [
 //     "src/**/*.ts" // Include all TypeScript files in the src folder
 // , "index.ts", "type.ts", "xss.clean.d.ts"  ],
-   "include": ["**/*.ts"], // Adjust based on your project structure
+   "include": ["**/*.ts", "index.ts"], // Adjust based on your project structure
   "exclude": ["node_modules"]
 }
