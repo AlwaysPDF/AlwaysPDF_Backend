@@ -104,7 +104,7 @@ const Upload = async (req: Request, res: Response) => {
 
   try {
    // Ensure temporary directories exist
-   await ensureTempDirectories();
+  //  await ensureTempDirectories();
 
 
     // Validate document exists
@@ -116,6 +116,8 @@ const Upload = async (req: Request, res: Response) => {
     }
 
     const pdfUrl = document.fileUrl;
+    console.log(pdfUrl);
+    
 
     if (!pdfUrl) {
       return res
