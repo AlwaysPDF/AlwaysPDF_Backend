@@ -5,11 +5,11 @@
   "main": "index.ts",
   "type": "module",
   "scripts": {
+    "vercel-build": "npm run build && mkdir -p ./vercel/output && cp -r dist/* ./vercel/output",
     "build": "rimraf dist && tsc",
-    "start": "npm run build && node ./dist/index.js",
-    "dev": "nodemon --exec vite-node index.ts",
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "vercel-build": "npm run build && cp -r dist/ /vercel/output"
+    "start": "node ./dist/index.js",
+    "dev": "nodemon --exec vite-node ./index.ts",
+    "test": "echo \"Error: no test specified\" && exit 1"
   },
   "engines": {
     "node": ">=16"
