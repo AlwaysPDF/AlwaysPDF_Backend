@@ -21,6 +21,18 @@ const generateTempFilename = () => {
   return `pdf-${crypto.randomBytes(8).toString("hex")}.pdf`;
 };
 
+// Ensure all necessary temporary directories exist
+const ensureTempDirectories = () => {
+  const tempDirs = ["/tmp/officeParserTemp", "/tmp/officeParserTemp/tempfiles"];
+
+  tempDirs.forEach((dir) => {
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+      console.log(`Created directory: ${dir}`);
+    }
+  });
+};
+
 // Cleanup function to ensure temp file is deleted
 const cleanupTempFile = (filePath: string) => {
   try {
@@ -59,11 +71,32 @@ const cleanupTempFile = (filePath: string) => {
 //   }
 // };
 
+// Cleanup all temporary files in a directory
+const cleanupTempDirectory = (dirPath: string) => {
+  try {
+    if (fs.existsSync(dirPath)) {
+      fs.readdirSync(dirPath).forEach((file) => {
+        const curPath = path.join(dirPath, file);
+        if (fs.lstatSync(curPath).isDirectory()) {
+          cleanupTempDirectory(curPath);
+        } else {
+          fs.unlinkSync(curPath);
+        }
+      });
+    }
+  } catch (error) {
+    console.error(`Error cleaning up directory: ${dirPath}`, error);
+  }
+};
+
 const Upload = async (req: Request, res: Response) => {
   const { documentId } = req.params;
-  let tempFilePath: string | null = null;
+  let tempFilePath: string | "" = "";
 
   try {
+    // Ensure temporary directories exist
+    ensureTempDirectories();
+
     // Validate document exists
     const document = await DocumentUpload.findOne({ _id: documentId });
     if (!document) {
@@ -104,13 +137,16 @@ const Upload = async (req: Request, res: Response) => {
       throw new Error("Downloaded file not found");
     }
 
+     // Set environment variable for officeparser temp directory
+     process.env.OFFICEPARSER_TEMP_PATH = '/tmp/officeParserTemp';
+
     const extractedText = await parseOfficeAsync(tempFilePath);
     pdfText = extractedText.toString();
     console.log(pdfText);
-    
 
     // Clean up immediately after extraction
     cleanupTempFile(tempFilePath);
+    cleanupTempDirectory('/tmp/officeParserTemp');
 
     return res.status(StatusCodes.OK).json({
       success: true,
@@ -122,28 +158,32 @@ const Upload = async (req: Request, res: Response) => {
     if (tempFilePath) {
       cleanupTempFile(tempFilePath);
     }
+    cleanupTempDirectory('/tmp/officeParserTemp');
 
     // Safe error message checking
-    const errorMessage = error?.message || '';
-    
+    const errorMessage = error?.message || "";
+
     // Handle specific error cases
-    if (typeof errorMessage === 'string' && errorMessage.includes("bad XRef entry")) {
+    if (
+      typeof errorMessage === "string" &&
+      errorMessage.includes("bad XRef entry")
+    ) {
       return res
         .status(StatusCodes.BAD_REQUEST)
         .json({ success: false, msg: "Invalid PDF format or corrupted file." });
     }
 
-     // Log error for debugging
-     console.error("PDF processing error:", {
+    // Log error for debugging
+    console.error("PDF processing error:", {
       error: error,
       message: errorMessage,
-      stack: error?.stack
+      stack: error?.stack,
     });
 
     return res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
       success: false,
       msg: "Error processing PDF.",
-      error: error.message || 'Unknown error occurred',
+      error: error.message || "Unknown error occurred",
     });
   }
 };
