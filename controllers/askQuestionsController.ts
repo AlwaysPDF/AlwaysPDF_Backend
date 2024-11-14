@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { parseOfficeAsync } from "officeparser";
+import { parseOfficeAsync, type OfficeParserConfig } from "officeparser";
 import axios from "axios";
 import fs from "fs";
 import path from "path";
@@ -32,18 +32,32 @@ const Upload = async (req: Request, res: Response) => {
     console.log(pdfUrl);
 
     if (!pdfUrl || !fileExtension) {
-      return res
-        .status(StatusCodes.NOT_FOUND)
-        .json({
-          success: false,
-          msg: "No PDF URL or file extension provided.",
-        });
+      return res.status(StatusCodes.NOT_FOUND).json({
+        success: false,
+        msg: "No PDF URL or file extension provided.",
+      });
     }
 
+    const createOfficeParserConfig = (): OfficeParserConfig => {
+      const config: OfficeParserConfig = {};
+      if (process.env.NODE_ENV === "production") {
+        config.tempFilesLocation = "/tmp";
+      }
+      return config;
+    };
+
     const response = await axios.get(pdfUrl, { responseType: "arraybuffer" });
-    const buffer = response.data;
-    const extractedText = await parseOfficeAsync(buffer);
-    pdfText = extractedText.toString();
+    const fileBuffer = Buffer.from(response.data);
+    // const buffer = response.data;
+    // const extractedText = await parseOfficeAsync(buffer);
+    // pdfText = extractedText.toString();
+
+    // const file: File = targetFile;
+    // const fileBuffer = Buffer.from(await file.arrayBuffer());
+    const extractedText = await parseOfficeAsync(
+      fileBuffer,
+      createOfficeParserConfig()
+    );
 
     return res.status(StatusCodes.OK).json({
       success: true,
