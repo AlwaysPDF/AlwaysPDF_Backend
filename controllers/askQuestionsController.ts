@@ -8,7 +8,6 @@ import { StatusCodes } from "http-status-codes";
 import DocumentUpload from "../models/DocumentUpload.js";
 import { OPENAI_API_KEY } from "../utils/keys.js";
 import crypto from "crypto";
-
 // import { BadRequestError } from "../errors/index.ts";
 
 // / New (i.e., OpenAI NodeJS SDK v4)
@@ -17,8 +16,8 @@ const openai = new OpenAI({ apiKey: OPENAI_API_KEY });
 let pdfText: string | null = null;
 
 // Generate a unique filename for each upload
-const generateTempFilename = () => {
-  return `pdf-${crypto.randomBytes(8).toString("hex")}.pdf`;
+const generateTempFilename = (fileExtension: string) => {
+  return `pdf-${crypto.randomBytes(8).toString("hex")}.${fileExtension}`;
 };
 
 // Ensure all necessary temporary directories exist
@@ -52,32 +51,6 @@ const cleanupTempFile = (filePath: string) => {
     console.error(`Error cleaning up temporary file: ${filePath}`, error);
   }
 };
-
-// Function to download the PDF from the URL
-// const downloadPDF = async (url: string, outputPath: string): Promise<void> => {
-//   const response = await axios({
-//     url,
-//     method: "GET",
-//     responseType: "stream",
-//   });
-//   await new Promise((resolve, reject) => {
-//     const stream = fs.createWriteStream(outputPath);
-//     response.data.pipe(stream);
-//     stream.on("finish", resolve);
-//     stream.on("error", reject);
-//   });
-// };
-
-// const extractTextFromPDF = async (pdfPath: string): Promise<any> => {
-//   // return new Promise((resolve, reject) => {
-//   try {
-//     const data = await parseOfficeAsync(pdfPath);
-//     pdfText = data.toString();
-//     return data.toString();
-//   } catch (error) {
-//     return error;
-//   }
-// };
 
 // Cleanup all temporary files in a directory
 const cleanupTempDirectory = (dirPath: string) => {
@@ -115,19 +88,20 @@ const Upload = async (req: Request, res: Response) => {
         .json({ success: false, msg: "No valid document or URL found." });
     }
 
-    const pdfUrl = document.fileUrl;
+    const pdfUrl = document?.fileUrl;
+    const fileExtension = document?.fileExtension;
     console.log(pdfUrl);
     
 
-    if (!pdfUrl) {
+    if (!pdfUrl || !fileExtension) {
       return res
         .status(StatusCodes.NOT_FOUND)
         .json({ success: false, msg: "No PDF URL provided." });
     }
 
     // Generate unique filename for this upload
-    const tempFileName = generateTempFilename();
-    tempFilePath = path.join("/tmp", tempFileName);
+    const tempFileName = generateTempFilename(fileExtension);
+    tempFilePath = path.join(process.cwd(), tempFileName);
 
     // Download PDF
     await axios({
@@ -150,7 +124,7 @@ const Upload = async (req: Request, res: Response) => {
     }
 
      // Set environment variable for officeparser temp directory
-     process.env.OFFICEPARSER_TEMP_PATH = '/tmp/officeParserTemp';
+    //  process.env.OFFICEPARSER_TEMP_PATH = '/tmp/officeParserTemp';
 
     const extractedText = await parseOfficeAsync(tempFilePath);
     pdfText = extractedText.toString();
@@ -200,90 +174,6 @@ const Upload = async (req: Request, res: Response) => {
   }
 };
 
-// const Upload = async (req: Request, res: Response) => {
-//   // const { pdfUrl } = req.body;
-//   const { documentId } = req.params;
-
-//   // if (!pdfUrl) {
-//   //   return res
-//   //     .status(StatusCodes.NOT_FOUND)
-//   //     .json({ success: false, msg: "No PDF URL provided." });
-//   // }
-
-//   const document = await DocumentUpload.findOne({ _id: documentId });
-
-//   if (!document) {
-//     return res
-//       .status(StatusCodes.NOT_FOUND)
-//       .json({ success: false, msg: "No PDF URL provided." });
-//   }
-
-//   const pdfUrl = document.fileUrl;
-//   console.log(pdfUrl);
-
-//   if (!pdfUrl) {
-//     return res
-//       .status(StatusCodes.NOT_FOUND)
-//       .json({ success: false, msg: "No PDF URL provided." });
-//   }
-
-//   // if (pdfUrl !== document.fileUrl) {
-//   //   throw new BadRequestError("Error with the Url");
-
-//   // }
-
-//   // Ensure the uploads directory exists
-//   // const uploadsDir = path.join(__dirname, "uploads");
-//   const uploadsDir = path.resolve("/tmp");
-//   if (!fs.existsSync(uploadsDir)) {
-//     console.log(`Creating directory: ${uploadsDir}`);
-//     fs.mkdirSync(uploadsDir);
-//   } else {
-//     console.log(`Directory already exists: ${uploadsDir}`);
-//   }
-
-//   const outputPath = path.join(uploadsDir, "downloaded.pdf");
-
-//   try {
-//     // Download the PDF
-//     // console.log(`Downloading PDF from URL: ${pdfUrl} to path: ${outputPath}`);
-//     await downloadPDF(pdfUrl, outputPath);
-
-//     if (!fs.existsSync(outputPath)) {
-//       throw new Error(`File not found at path: ${outputPath}`);
-//     }
-
-//     pdfText = await extractTextFromPDF(outputPath);
-
-//     // Extract text from the downloaded PDF
-//     console.log(`Extracting text from downloaded PDF at path: ${outputPath}`);
-//     console.log(pdfText);
-
-//     // Clean up the downloaded file
-//     // console.log(`Deleting downloaded PDF from path: ${outputPath}`);
-//     fs.unlinkSync(outputPath);
-
-//     res.status(StatusCodes.OK).json({
-//       success: true,
-//       msg: "PDF downloaded and text extracted successfully.",
-//       pdfText,
-//     });
-//   } catch (error: any) {
-//     // console.error(`Error processing PDF: ${error.message}`);
-
-//     // Handle specific errors like "FormatError"
-//     if (error.message.includes("bad XRef entry")) {
-//       return res
-//         .status(StatusCodes.BAD_REQUEST)
-//         .json({ success: false, msg: "Invalid PDF format or corrupted file." });
-//     }
-
-//     res
-//       .status(StatusCodes.INTERNAL_SERVER_ERROR)
-//       .json({ success: false, msg: "Error processing PDF." });
-//   }
-// };
-
 const askQuestion = async (
   req: Request,
   res: Response,
@@ -298,7 +188,7 @@ const askQuestion = async (
 
   try {
     const chatCompletion = await openai.chat.completions.create({
-      model: "gpt-4o",
+      model: "gpt-4o-mini",
       max_tokens: 10000,
       n: 1,
       stop: null,
@@ -308,8 +198,6 @@ const askQuestion = async (
       frequency_penalty: 0,
       presence_penalty: 0,
       messages: [
-        // { role: "user", content: question }, // Add user message with PDF text
-        // { role: "system", content: pdfText }, // Optionally add previous bot responses
         {
           role: "system",
           content:
