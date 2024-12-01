@@ -1,19 +1,19 @@
 import { Request, Response } from "express";
 import { parseOfficeAsync, type OfficeParserConfig } from "officeparser";
-import axios from "axios";
-import fs from "fs";
-import path from "path";
-import OpenAI from "openai";
 import { StatusCodes } from "http-status-codes";
+
+import axios from "axios";
+import OpenAI from "openai";
 import DocumentUpload from "../models/DocumentUpload.js";
 import { OPENAI_API_KEY } from "../utils/keys.js";
-import crypto from "crypto";
 // import { BadRequestError } from "../errors/index.ts";
 
 // / New (i.e., OpenAI NodeJS SDK v4)
 const openai = new OpenAI({ apiKey: OPENAI_API_KEY });
+console.log("OpenAI API Key:", OPENAI_API_KEY);
 
-let pdfText: string | "" = "";
+
+// let pdfText: string | "" = "";
 
 const Upload = async (req: Request, res: Response) => {
   const { documentId } = req.params;
@@ -48,12 +48,6 @@ const Upload = async (req: Request, res: Response) => {
 
     const response = await axios.get(pdfUrl, { responseType: "arraybuffer" });
     const fileBuffer = Buffer.from(response.data);
-    // const buffer = response.data;
-    // const extractedText = await parseOfficeAsync(buffer);
-    // pdfText = extractedText.toString();
-
-    // const file: File = targetFile;
-    // const fileBuffer = Buffer.from(await file.arrayBuffer());
     const extractedText = await parseOfficeAsync(
       fileBuffer,
       createOfficeParserConfig()
@@ -64,22 +58,17 @@ const Upload = async (req: Request, res: Response) => {
       msg: "PDF processed successfully",
       pdfText: extractedText.toString(),
     });
-  } catch (error) {
+  } catch (error: any) {
     res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
       success: false,
       msg: "Error interacting text",
-      error,
+      error: error.message || error,
     });
   }
 };
 
-const askQuestion = async (
-  req: Request,
-  res: Response,
-  question: string,
-  pdfText: string
-) => {
-  // const { question } = req.body;
+const askQuestion = async (req: Request, res: Response, question: string, pdfText: string) => {
+  // const {  } = req.body;
 
   if (!question || !pdfText) {
     return res.status(400).send("Question and PDF text are required.");
@@ -117,7 +106,7 @@ const askQuestion = async (
       chatCompletion.choices[0].message &&
       chatCompletion.choices[0].message.content
     ) {
-      return chatCompletion.choices[0].message.content;
+      return chatCompletion.choices?.[0].message.content;
       // res.json({ answer: chatCompletion.choices[0].message.content });
     } else {
       res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
@@ -125,11 +114,10 @@ const askQuestion = async (
         msg: "Unexpected response structure from OpenAI API.",
       });
     }
-  } catch (error) {
+  } catch (error: any) {
     res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
       success: false,
-      msg: "Error interacting with OpenAI API.",
-      error,
+      msg: error.message || error || "Error interacting text",
     });
   }
 };

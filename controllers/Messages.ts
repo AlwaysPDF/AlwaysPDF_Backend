@@ -8,9 +8,15 @@ import User from "../models/User.js";
 // Get messages for a specific PDF
 const getMessages = async (req: Request, res: Response) => {
   const { documentId } = req.params;
-  const user = await { _id: req.user?.userId };
 
   try {
+    const user = await User.findOne({ _id: req.user?.userId });
+    if (!user) {
+      return res
+        .status(StatusCodes.NOT_FOUND)
+        .json({ success: false, msg: "User not found" });
+    }
+
     const messages = await QuestionsMessage.find({
       user: user?._id,
       document: documentId,
@@ -28,17 +34,19 @@ const getMessages = async (req: Request, res: Response) => {
       msg: "Fetched successfully",
       projectedMessages,
     });
-  } catch (error) {
+  } catch (error: any) {
     res
       .status(StatusCodes.INTERNAL_SERVER_ERROR)
-      .json({ success: false, msg: "Failed to retrieve messages" });
+      .json({ success: false,msg:
+        error.response?.data ||
+        error.message ||
+        "Something went wrong, please try again" });
   }
 };
 
 // Add a new message (User asks a question, AI responds)
 const addMessage = async (req: Request, res: Response) => {
   const { documentId, question, pdfText } = req.body;
-  const user = await User.findOne({ _id: req?.user?.userId });
 
   // if(user && user?._id){
   //     return res
@@ -47,6 +55,13 @@ const addMessage = async (req: Request, res: Response) => {
   // }
 
   try {
+    const user = await User.findOne({ _id: req?.user?.userId });
+    if (!user) {
+      return res
+        .status(StatusCodes.NOT_FOUND)
+        .json({ success: false, msg: "User not found" });
+    }
+
     // Save the user's question
     const userMessage = await QuestionsMessage.create({
       message: question,
@@ -76,17 +91,19 @@ const addMessage = async (req: Request, res: Response) => {
         aiMessage,
       });
     } else {
-      res
-        .status(StatusCodes.OK)
-        .json({
-          success: false,
-          msg: "Failed to add message or generate AI response.",
-        });
+      res.status(StatusCodes.OK).json({
+        success: false,
+        msg: "Failed to add message or generate AI response.",
+      });
     }
-  } catch (error) {
-    res
-      .status(StatusCodes.INTERNAL_SERVER_ERROR)
-      .json({ msg: "Failed to add message to the database" });
+  } catch (error: any) {
+    res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
+      success: false,
+      msg:
+        error.response?.data ||
+        error.message ||
+        "Something went wrong, please try again",
+    });
   }
 };
 

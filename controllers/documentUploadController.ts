@@ -7,15 +7,6 @@ import { BadRequestError, NotFoundError } from "../errors/index.js";
 
 import axios from "axios";
 import { GOOGLE_DRIVE_APIKEY } from "../utils/keys.js";
-// import fs from "fs" ;
-// import path from "path";
-
-// import { TokenPayload } from "../type.js";
-
-// Extend the Express Request interface to include user information
-// interface CustomRequest extends Request {
-//   user?: TokenPayload;
-// }
 
 const uploadDocumentByFile = async (req: Request, res: Response) => {
   const { fileUrl, fileType, fileName, fileSize, fileExtension } = req.body;
@@ -45,7 +36,6 @@ const uploadDocumentByFile = async (req: Request, res: Response) => {
   });
 };
 
-
 // Function to extract the Google Drive file ID from a URL
 const extractFileId = (url: string) => {
   const regex = /\/d\/(.+?)\//;
@@ -61,27 +51,26 @@ const uploadDocumentByURL = async (req: Request, res: Response) => {
     throw new BadRequestError("Please provide all values");
   }
 
-  const fileId = extractFileId(fileUrl);
-  if (!fileId) {
-    res.status(StatusCodes.BAD_REQUEST).json({
-      success: false,
-      msg: "Invalid Google Drive URL",
-    });
-    return;
-  }
-
-  const user = await User.findOne({ _id: req.user?.userId });
-  if (!user) {
-    throw new NotFoundError("User not found");
-  }
-
-  const apiKey = GOOGLE_DRIVE_APIKEY; 
-  console.log(apiKey);
-  
-
-  const apiUrl = `https://www.googleapis.com/drive/v3/files/${fileId}?key=${apiKey}&fields=name,size,mimeType`;
-
   try {
+    const fileId = extractFileId(fileUrl);
+    if (!fileId) {
+      res.status(StatusCodes.BAD_REQUEST).json({
+        success: false,
+        msg: "Invalid Google Drive URL",
+      });
+      return;
+    }
+
+    const user = await User.findOne({ _id: req.user?.userId });
+    if (!user) {
+      throw new NotFoundError("User not found");
+    }
+
+    const apiKey = GOOGLE_DRIVE_APIKEY;
+    console.log(apiKey);
+
+    const apiUrl = `https://www.googleapis.com/drive/v3/files/${fileId}?key=${apiKey}&fields=name,size,mimeType`;
+
     const response = await axios.get(apiUrl);
     const { name, size, mimeType } = response.data;
     // console.log(response.data);
@@ -141,7 +130,7 @@ const uploadDocumentByURL = async (req: Request, res: Response) => {
       error.response?.data || error.message
     );
 
-    res.status(StatusCodes.BAD_REQUEST).json({
+    res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
       success: false,
       msg:
         error.response?.data ||
@@ -152,42 +141,56 @@ const uploadDocumentByURL = async (req: Request, res: Response) => {
 };
 
 const allDocuments = async (req: Request, res: Response) => {
-  const user = await User.findOne({ _id: req.user?.userId });
-  if (!user) {
-    throw new NotFoundError("User not found");
-  }
+  try {
+    const user = await User.findOne({ _id: req.user?.userId });
+    if (!user) {
+      throw new NotFoundError("User not found");
+    }
 
-  const documents = await DocumentUpload.find({ userId: user._id });
+    const documents = await DocumentUpload.find({ userId: user._id });
 
-  if (documents.length < 0) {
-    res.status(StatusCodes.OK).json({
-      success: true,
-      msg: "you have no documents",
-      // documents
-    });
-  } else {
-    res.status(StatusCodes.OK).json({
-      success: true,
-      msg: "Fetched successfully",
-      documents,
+    if (documents.length < 0) {
+      res.status(StatusCodes.OK).json({
+        success: true,
+        msg: "you have no documents",
+        // documents
+      });
+    } else {
+      res.status(StatusCodes.OK).json({
+        success: true,
+        msg: "Fetched successfully",
+        documents,
+      });
+    }
+  } catch (error: any) {
+    res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
+      success: false,
+      msg:
+        error.response?.data ||
+        error.message ||
+        "Something went wrong, please try again",
     });
   }
 };
 
 const deleteSingleDocument = async (req: Request, res: Response) => {
   const { documentId } = req.params;
+  try {
+    const document = await DocumentUpload.findOneAndDelete({ _id: documentId });
+    if (!document) {
+      return;
+    }
 
-  const document = await DocumentUpload.findOneAndDelete({ _id: documentId });
-
-  res
-    .status(StatusCodes.OK)
-    .json({ success: true, msg: "Deleted successfully", document });
-
-  // if (!document) {
-  //   return res
-  //     .status(StatusCodes.NOT_FOUND)
-  //     .json({ success: false, msg: "Document not found" });
-  // }
+    res
+      .status(StatusCodes.OK)
+      .json({ success: true, msg: "Deleted successfully", document });
+  } catch (error: any) {
+    res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
+      success: false,
+      msg: "Error interacting text",
+      error: error.message || error,
+    });
+  }
 };
 
 // AIzaSyDaVnoZOxgYJ6x2ifWCk5vUexMUFe-vgm8
@@ -233,7 +236,6 @@ const deleteSingleDocument = async (req: Request, res: Response) => {
 //     console.error("Error downloading or processing file:", error);
 //   }
 // };
-
 
 // getGoogleDriveFileDetails("https://docs.google.com/document/d/1hn_GhOoblmo4gShta01eb-3T2bqwC18qI2trQRym7dg/edit")
 
