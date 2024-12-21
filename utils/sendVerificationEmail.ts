@@ -9,8 +9,7 @@ interface SendVerificationEmailParams {
 const sendVerificationEmail = async ({
   email,
   verificationToken,
-}: //   origin,
-SendVerificationEmailParams) => {
+}: SendVerificationEmailParams) => {
   const year = new Date().getFullYear();
 
   const bottomMessage = `<div style=" clear: both; width: 60%; background-color: #5A27D5; margin: auto; padding: 1rem 2rem; border-radius: 2rem; display: block;">
@@ -18,7 +17,7 @@ SendVerificationEmailParams) => {
     </div>`;
 
   const message = `<div style="background-color: #e2e2ff; padding: 3rem 1.5rem; display: flex; flex-direction: column; align-items: center;">
-                        <div style="clear: both; width: 60%; background-color: #ffffff; margin: auto; padding: 2rem; border-radius: 2rem; display: block;">
+                        <div style="clear: both; width: 80%; background-color: #ffffff; margin: auto; padding: 2rem; border-radius: 2rem; display: block;">
                           <h4 style="margin-bottom: 1.2rem; font-size: 1.5rem; text-align: center;">Confirm your email</h4>
                           <hr />
 
@@ -35,7 +34,7 @@ SendVerificationEmailParams) => {
                         </div>
 
                         </div>`;
-                        // ${bottomMessage}
+  // ${bottomMessage}
 
   return sendEmail({
     to: email,

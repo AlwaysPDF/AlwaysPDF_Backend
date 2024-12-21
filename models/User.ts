@@ -12,9 +12,9 @@ interface UserDocument extends Document {
   verificationTokenExpirationDate?: Date;
   isVerified?: boolean;
   verified?: Date;
-  passwordToken?: string;
+  passwordToken?: string | null;
   isPasswordTokenVerified?: boolean;
-  passwordTokenExpirationDate?: Date;
+  passwordTokenExpirationDate?: Date | null;
   isProfileComplete?: boolean;
   numberOfEdits?: number;
   tier?: string;
@@ -69,6 +69,7 @@ const UserSchema = new Schema<UserDocument>(
     verified: Date,
     passwordToken: {
       type: String,
+      default: null
     },
     isPasswordTokenVerified: {
       type: Boolean,
@@ -76,6 +77,7 @@ const UserSchema = new Schema<UserDocument>(
     },
     passwordTokenExpirationDate: {
       type: Date,
+      default: null
     },
     isProfileComplete: {
       type: Boolean,

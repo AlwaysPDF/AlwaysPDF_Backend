@@ -7,6 +7,7 @@ import {
   createTokenUser,
   createJWT,
   sendVerificationEmail,
+  sendResetPasswordEmail,
   createHash,
 } from "../utils/index.js";
 
@@ -190,107 +191,117 @@ const login = async (req: Request, res: Response) => {
 // };
 
 // forgotPassword
-// const forgotPassword = async (req, res) => {
-//   const { email } = req.body;
+const forgotPassword = async (req: Request, res: Response) => {
+  const { email } = req.body;
 
-//   if (!email) {
-//     throw new BadRequestError("Please provide valid email");
-//   }
+  if (!email) {
+    throw new BadRequestError("Please provide valid email");
+  }
 
-//   const user = await User.findOne({ email });
+  const user = await User.findOne({ email });
 
-//   if (!user) {
-//     throw new UnAuthenticatedError("Email doesn't exist");
-//   }
+  if (!user) {
+    throw new UnAuthenticatedError("Email doesn't exist");
+  }
 
-//   const bytes = crypto.randomBytes(2);
-//   const number = bytes.readUInt16BE(0);
-//   const fourDigitNumber = number % 10000; // Ensure it's 4 digits
+  const bytes = crypto.randomBytes(2);
+  const number = bytes.readUInt16BE(0);
+  const fourDigitNumber = number % 10000; // Ensure it's 4 digits
 
-//   const passwordToken = fourDigitNumber.toString().padStart(4, "0");
+  const passwordToken = fourDigitNumber.toString().padStart(4, "0");
 
-//   await sendResetPasswordEmail({
-//     fName: user.fName,
-//     email: user.email,
-//     token: passwordToken,
-//   });
-//   await noOfEmails();
+  if (
+    !user._id ||
+    !user.email ||
+    !user.fName ||
+    !user.lName ||
+    !user.isProfileComplete ||
+    !user.tier
+  ) {
+    throw new UnAuthenticatedError("Incomplete user data");
+  }
 
-//   const tenMinutes = 1000 * 60 * 5;
-//   const passwordTokenExpirationDate = new Date(Date.now() + tenMinutes);
+  await sendResetPasswordEmail({
+    fName: user?.fName,
+    email: user.email,
+    token: passwordToken,
+  });
 
-//   user.passwordToken = createHash(passwordToken);
-//   user.passwordTokenExpirationDate = passwordTokenExpirationDate;
-//   await user.save();
+  const tenMinutes = 1000 * 60 * 5;
+  const passwordTokenExpirationDate = new Date(Date.now() + tenMinutes);
 
-//   res.status(StatusCodes.OK).json({
-//     success: true,
-//     msg: "Please check your email for OTP",
-//     email: user.email,
-//   });
-// };
+  user.passwordToken = createHash(passwordToken);
+  user.passwordTokenExpirationDate = passwordTokenExpirationDate;
+  await user.save();
+
+  res.status(StatusCodes.OK).json({
+    success: true,
+    msg: "Please check your email for OTP",
+    email: user.email,
+  });
+};
 
 // verifyEmailResetPassword
-// const verifyEmailResetPassword = async (req, res) => {
-//   const { token, email } = req.body;
-//   if (!token || !email) {
-//     throw new BadRequestError("Please provide all values");
-//   }
-//   const user = await User.findOne({ email });
+const verifyEmailResetPassword = async (req: Request, res: Response) => {
+  const { token, email } = req.body;
+  if (!token || !email) {
+    throw new BadRequestError("Please provide all values");
+  }
+  const user = await User.findOne({ email });
 
-//   if (!user) {
-//     throw new UnAuthenticatedError("Email doesn't exist");
-//   }
+  if (!user) {
+    throw new UnAuthenticatedError("Email doesn't exist");
+  }
 
-//   const currentDate = new Date();
+  const currentDate = new Date();
 
-//   if (
-//     user.passwordToken === createHash(token) &&
-//     user.passwordTokenExpirationDate > currentDate
-//   ) {
-//     user.isPasswordTokenVerified = true;
-//     user.passwordToken = null;
-//     user.passwordTokenExpirationDate = null;
-//     await user.save();
+  if (
+    user?.passwordToken === createHash(token) && user.passwordTokenExpirationDate &&
+    user?.passwordTokenExpirationDate > currentDate
+  ) {
+    user.isPasswordTokenVerified = true;
+    user.passwordToken = null;
+    user.passwordTokenExpirationDate = null;
+    await user.save();
 
-//     res
-//       .status(StatusCodes.OK)
-//       .json({ success: true, msg: "OTP verification successful" });
-//   } else {
-//     res
-//       .status(StatusCodes.BAD_REQUEST)
-//       .json({ success: false, msg: "OTP invalid" });
-//   }
-// };
+    res
+      .status(StatusCodes.OK)
+      .json({ success: true, msg: "OTP verification successful" });
+  } else {
+    res
+      .status(StatusCodes.BAD_REQUEST)
+      .json({ success: false, msg: "OTP invalid" });
+  }
+};
 
-// resetPassword
-// const resetPassword = async (req, res) => {
-//   const { email, newPassword, confirmPassword } = req.body;
-//   if (!newPassword || !confirmPassword) {
-//     throw new BadRequestError("Please provide all values");
-//   }
+// changePassword
+const changePassword = async (req: Request, res: Response) => {
+  const { email, newPassword, confirmPassword } = req.body;
+  if (!newPassword || !confirmPassword) {
+    throw new BadRequestError("Please provide all values");
+  }
 
-//   if (newPassword !== confirmPassword) {
-//     throw new BadRequestError("Password doesn't match");
-//   }
+  if (newPassword !== confirmPassword) {
+    throw new BadRequestError("Password doesn't match");
+  }
 
-//   const user = await User.findOne({ email });
+  const user = await User.findOne({ email });
 
-//   if (!user) {
-//     throw new UnAuthenticatedError("Email doesn't exist");
-//   }
+  if (!user) {
+    throw new UnAuthenticatedError("Email doesn't exist");
+  }
 
-//   if (!user.isPasswordTokenVerified) {
-//     throw new UnAuthenticatedError("Please verify your email");
-//   }
+  if (!user.isPasswordTokenVerified) {
+    throw new UnAuthenticatedError("Please verify your email");
+  }
 
-//   user.password = newPassword;
-//   await user.save();
+  user.password = newPassword;
+  await user.save();
 
-//   res
-//     .status(StatusCodes.OK)
-//     .json({ success: true, msg: "Password changed successful" });
-// };
+  res
+    .status(StatusCodes.OK)
+    .json({ success: true, msg: "Password changed successful" });
+};
 
 // const resendToken = async (req, res) => {
 //   const { email } = req.body;
@@ -334,8 +345,8 @@ export {
   verifyEmail,
   login,
   //   logout,
-  //   forgotPassword,
-  //   verifyEmailResetPassword,
-  //   resetPassword,
+    forgotPassword,
+    verifyEmailResetPassword,
+    changePassword,
   //   resendToken,
 };
