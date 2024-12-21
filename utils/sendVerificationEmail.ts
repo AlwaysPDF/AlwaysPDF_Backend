@@ -23,14 +23,14 @@ const sendVerificationEmail = async ({
 
                           <h6 style="font-size: 1.2rem;">Hello,</h6>
 
-                          <p class="message-font">Thank you for registering with EverPDF. Your security is our top priority, and to ensure the protection of your account, we have initiated the process of verifying your identity.
+                          <p class="message-font">Thank you for registering with AlwaysPDF. Your security is our top priority, and to ensure the protection of your account, we have initiated the process of verifying your identity.
                           </p> 
 
                           <p>To complete the registration process, please copy the code below to verify your email address.</p>
 
                           <p>Your OTP: <b>${verificationToken}</b></p>
 
-                          <p>This link expires in 1 hour. You will need to request a new link after expiration.</p>
+                          <p>This link expires in an hour. You will need to request a new link after expiration.</p>
                         </div>
 
                         </div>`;
