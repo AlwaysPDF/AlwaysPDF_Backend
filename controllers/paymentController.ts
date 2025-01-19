@@ -8,14 +8,16 @@ import Stripe from "stripe";
 
 import Payment from "../models/Payment.js";
 
-const stripe = new Stripe(STRIPE_SECRET_KEY_LIVE);
+const stripe = new Stripe(STRIPE_SECRET_KEY_LIVE, {
+  apiVersion: '2024-12-18.acacia'
+});
 
 const paymentHandler = async (req: Request, res: Response) => {
   if (req.method === "POST") {
     try {
-      const session = (await stripe.checkout.sessions.create) && {
+      const session = await stripe.checkout.sessions.create({
         payment_method_types: ["card"],
-        billing_address_collection: "auto",
+        // billing_address_collection: "auto",
         line_items: [
           {
             price_data: {
@@ -25,9 +27,9 @@ const paymentHandler = async (req: Request, res: Response) => {
                 description: "$9.90/Month subscription",
               },
               unit_amount: 100, // Amount in cents
-            },
-            recurring: {
-              interval: "month",
+              recurring: {
+                interval: "month",
+              },
             },
             quantity: 1,
           },
@@ -39,7 +41,9 @@ const paymentHandler = async (req: Request, res: Response) => {
           userId: req?.user?.userId,
           email: req?.user?.email,
         },
-      };
+      } as Stripe.Checkout.SessionCreateParams);
+
+      res.status(StatusCodes.OK).json({ success: true, sessionId: session.id });
 
       // Simulate webhook event after payment session creation
       const simulatedEvent = {
@@ -50,6 +54,7 @@ const paymentHandler = async (req: Request, res: Response) => {
           object: session,
         },
       };
+      
 
       // Call webhook handler with simulated event
       const simulatedReq = {
@@ -67,9 +72,8 @@ const paymentHandler = async (req: Request, res: Response) => {
         end: () => {},
       } as unknown as Response;
 
-      await webhookHandler(simulatedReq, simulatedRes);
 
-      res.status(StatusCodes.OK).json({ success: true, session });
+      await webhookHandler(simulatedReq, simulatedRes);
     } catch (err: any) {
       res
         .status(StatusCodes.INTERNAL_SERVER_ERROR)
