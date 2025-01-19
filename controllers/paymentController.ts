@@ -69,7 +69,7 @@ const paymentHandler = async (req: Request, res: Response) => {
 
       await webhookHandler(simulatedReq, simulatedRes);
 
-      res.status(StatusCodes.OK).json({ success: true, id: session });
+      res.status(StatusCodes.OK).json({ success: true, session });
     } catch (err: any) {
       res
         .status(StatusCodes.INTERNAL_SERVER_ERROR)
