@@ -38,13 +38,16 @@ import authRouter from "./routes/authRoutes.js";
 import userRouter from "./routes/userRoutes.js";
 
 // ask questions router
-import questionRouter from "./routes/askQuestionsRoutes.js";
+import questionRouter from "./routes/askQuestionRoutes.js";
 
 // document upload router
 import documentUploadRouter from "./routes/documentUploadRoutes.js";
 
 // message router
-import messageRouter from "./routes/messagesRoutes.js";
+import messageRouter from "./routes/messageRoutes.js";
+
+// payment router
+import paymentRouter from "./routes/paymentRoutes.js";
 
 // firebase router
 // import firebaseRouter from "./routes/firebaseRoutes";
@@ -94,6 +97,7 @@ app.use("/api/v1/user", userRouter);
 app.use("/api/v1/documentUpload", authenticateUser, documentUploadRouter);
 app.use("/api/v1/questions", authenticateUser, questionRouter);
 app.use("/api/v1/messages", authenticateUser, messageRouter);
+app.use("/api/v1/payment", authenticateUser, paymentRouter);
 
 // Base Route for the server
 app.get("/", (req: Request, res: Response) => {

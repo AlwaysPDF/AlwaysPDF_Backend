@@ -3,7 +3,7 @@ import validator from "validator";
 import bcrypt from "bcryptjs";
 
 interface UserDocument extends Document {
-  _id?: string;
+  // _id?: string;  
   fName?: string;
   lName?: string;
   email: string;
