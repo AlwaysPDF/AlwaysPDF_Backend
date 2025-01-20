@@ -9,7 +9,7 @@ import Stripe from "stripe";
 import Payment from "../models/Payment.js";
 
 const stripe = new Stripe(STRIPE_SECRET_KEY_LIVE, {
-  apiVersion: '2024-12-18.acacia'
+  apiVersion: "2024-12-18.acacia",
 });
 
 const paymentHandler = async (req: Request, res: Response) => {
@@ -26,7 +26,7 @@ const paymentHandler = async (req: Request, res: Response) => {
                 name: "Premium Subscription Payment",
                 description: "$9.90/Month subscription",
               },
-              unit_amount: 100, // Amount in cents
+              unit_amount: 50, // Amount in cents
               recurring: {
                 interval: "month",
               },
@@ -36,7 +36,7 @@ const paymentHandler = async (req: Request, res: Response) => {
         ],
         mode: "subscription",
         success_url: `${req.headers.origin}/success`,
-        cancel_url: `${req.headers.origin}/cancel`,
+        cancel_url: `${req.headers.origin}/failed`,
         metadata: {
           userId: req?.user?.userId,
           email: req?.user?.email,
@@ -45,35 +45,40 @@ const paymentHandler = async (req: Request, res: Response) => {
 
       res.status(StatusCodes.OK).json({ success: true, sessionId: session.id });
 
-      // Simulate webhook event after payment session creation
-      const simulatedEvent = {
-        id: "we_1QilzvLOTQKmd0QoAdFNnSFi",
-        object: "event",
-        type: "checkout.session.completed",
-        data: {
-          object: session,
-        },
-      };
-      
+      try {
+        // Simulate webhook in the background
+        (async () => {
+          const simulatedEvent = {
+            id: "we_1QilzvLOTQKmd0QoAdFNnSFi",
+            object: "event",
+            type: "checkout.session.completed",
+            data: {
+              object: session,
+            },
+          };
 
-      // Call webhook handler with simulated event
-      const simulatedReq = {
-        method: "POST",
-        headers: { "stripe-signature": STRIPE_WEBHOOK_SECRET_LIVE }, // Add a valid signature for production
-        body: simulatedEvent,
-      } as unknown as Request;
+          const simulatedReq = {
+            method: "POST",
+            headers: { "stripe-signature": STRIPE_WEBHOOK_SECRET_LIVE },
+            body: simulatedEvent,
+          } as unknown as Request;
 
-      const simulatedRes = {
-        status: (code: number) => ({
-          json: (data: any) => console.log("Webhook Response:", code, data),
-          send: (data: string) => console.log("Webhook Response:", code, data),
-        }),
-        setHeader: () => {},
-        end: () => {},
-      } as unknown as Response;
+          const simulatedRes = {
+            status: (code: number) => ({
+              json: (data: any) => console.log("Webhook Response:", code, data),
+              send: (data: string) =>
+                console.log("Webhook Response:", code, data),
+            }),
+            setHeader: () => {},
+            end: () => {},
+          } as unknown as Response;
 
-
-      await webhookHandler(simulatedReq, simulatedRes);
+          await webhookHandler(simulatedReq, simulatedRes);
+        })();
+      } catch (webhookError) {
+        console.error("Webhook simulation failed:", webhookError);
+        // Could add monitoring/alerting here
+      }
     } catch (err: any) {
       res
         .status(StatusCodes.INTERNAL_SERVER_ERROR)

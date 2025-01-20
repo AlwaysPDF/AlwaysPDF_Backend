@@ -97,7 +97,7 @@ app.use("/api/v1/user", userRouter);
 app.use("/api/v1/documentUpload", authenticateUser, documentUploadRouter);
 app.use("/api/v1/questions", authenticateUser, questionRouter);
 app.use("/api/v1/messages", authenticateUser, messageRouter);
-app.use("/api/v1/payment", authenticateUser, paymentRouter);
+app.use("/api/v1/payment", paymentRouter);
 
 // Base Route for the server
 app.get("/", (req: Request, res: Response) => {
