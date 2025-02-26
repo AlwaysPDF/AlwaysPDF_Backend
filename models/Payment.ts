@@ -6,8 +6,9 @@ export interface PaymentDocument extends Document {
   email: string;
   amount: number;
   currency: string;
-  payment_status: string;
-  session_id: string;
+  paymentStatus: string;
+  sessionId: string;
+  eventType: string;
 }
 
 const PaymentSchema: Schema<PaymentDocument> = new mongoose.Schema(
@@ -16,10 +17,11 @@ const PaymentSchema: Schema<PaymentDocument> = new mongoose.Schema(
     email: { type: String, required: true },
     amount: { type: Number, required: true },
     currency: { type: String, required: true },
-    payment_status: { type: String, required: true },
-    session_id: { type: String, required: true },
+    paymentStatus: { type: String, required: true },
+    sessionId: { type: String, required: true },
+    eventType: { type: String, required: true },
   },
   { timestamps: true }
 );
 
-export default mongoose.model<PaymentDocument>("Payment",PaymentSchema);
+export default mongoose.model<PaymentDocument>("Payment", PaymentSchema);

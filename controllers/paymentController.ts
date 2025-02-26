@@ -118,7 +118,8 @@ const webhookHandler = async (req: Request, res: Response) => {
     }
 
     // Handle the event
-    if (event.type === "checkout.session.completed") {
+    if (event.type) {
+      //  === "checkout.session.completed"
       const session = event.data.object as Stripe.Checkout.Session;
 
       // Example: Save payment details to your database
@@ -128,8 +129,9 @@ const webhookHandler = async (req: Request, res: Response) => {
         email: metadata.email || "unknown",
         amount: (session.amount_total || 0) / 100, // Handle null amount_total
         currency: session.currency || "usd",
-        payment_status: session.payment_status || "unknown",
-        session_id: session.id,
+        paymentStatus: session.payment_status || "unknown",
+        sessionId: session.id,
+        eventType: event.type,
       };
 
       try {

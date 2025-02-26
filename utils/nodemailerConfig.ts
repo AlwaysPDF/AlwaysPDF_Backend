@@ -1,10 +1,11 @@
 export default {
-  service: 'gmail',
+  host: "mail.alwayspdf.com",
   port: 465,
   secure: true,
-  host: 'smtp.gmail.com',
   auth: {
-    user: 'ajibolaisaac09@gmail.com',
-    pass: 'bqsqrsalkmvfnnhj',
+    user: "info@alwayspdf.com",
+    pass: "@securemyaccount2025",
   },
-}
+  // connectionTimeout: 10000, // 10 seconds
+  // greetingTimeout: 10000    // 10 seconds
+};
