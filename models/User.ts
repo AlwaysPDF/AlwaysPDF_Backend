@@ -3,7 +3,6 @@ import validator from "validator";
 import bcrypt from "bcryptjs";
 
 interface UserDocument extends Document {
-  // _id?: string;  
   fName?: string;
   lName?: string;
   email: string;
@@ -17,12 +16,18 @@ interface UserDocument extends Document {
   passwordTokenExpirationDate?: Date | null;
   isProfileComplete?: boolean;
   numberOfEdits?: number;
-  tier?: string;
+  tier?: "Free" | "Premium" | "Enterprise";
+  subscriptionStatus?: "Free" | "Active" | "Expired";
+  subscriptionStartDate?: Date | null; 
+  subscriptionEndDate?: Date | null;
+  subscriptionPlan?: "Monthly" | "Yearly"; 
   lastLoggedIn?: Date;
-  numberOfUpload?: Number;
+  numberOfUpload?: number;
 
   comparePassword(candidatePassword: string): Promise<boolean>;
+  updateSubscriptionStatus(): Promise<void>;
 }
+
 
 const UserSchema = new Schema<UserDocument>(
   {
@@ -69,7 +74,7 @@ const UserSchema = new Schema<UserDocument>(
     verified: Date,
     passwordToken: {
       type: String,
-      default: null
+      default: null,
     },
     isPasswordTokenVerified: {
       type: Boolean,
@@ -77,7 +82,7 @@ const UserSchema = new Schema<UserDocument>(
     },
     passwordTokenExpirationDate: {
       type: Date,
-      default: null
+      default: null,
     },
     isProfileComplete: {
       type: Boolean,
@@ -91,6 +96,24 @@ const UserSchema = new Schema<UserDocument>(
       type: String,
       enum: ["Free", "Premium", "Enterprise"],
       default: "Free",
+    },
+    subscriptionStatus: {
+      type: String,
+      enum: ["Free", "Active", "Expired"],
+      default: "Free",
+    },
+    subscriptionStartDate: {
+      type: Date,
+      default: null,
+    },
+    subscriptionEndDate: {
+      type: Date,
+      default: null,
+    },
+    subscriptionPlan: {
+      type: String,
+      enum: ["Monthly", "Yearly"],
+      default: "Monthly",
     },
     lastLoggedIn: {
       type: Date,
@@ -117,5 +140,15 @@ UserSchema.methods.comparePassword = async function (
   const isMatch = await bcrypt.compare(canditatePassword, this.password!);
   return isMatch;
 };
+
+UserSchema.methods.updateSubscriptionStatus = async function () {
+  if (this.subscriptionEndDate && new Date() > this.subscriptionEndDate) {
+    this.subscriptionStatus = "Expired";
+    this.tier = "Free"; // Downgrade to Free if expired
+    this.subscriptionPlan = null
+    await this.save();
+  }
+};
+
 
 export default mongoose.model("User", UserSchema);

@@ -6,7 +6,7 @@ import { StatusCodes } from "http-status-codes";
 import User from "../models/User.js";
 
 // Get messages for a specific PDF
-const getMessages = async (req: Request, res: Response) => {
+const getMessages = async (req: Request, res: Response): Promise<any> => {
   const { documentId } = req.params;
 
   try {
@@ -45,7 +45,7 @@ const getMessages = async (req: Request, res: Response) => {
 };
 
 // Add a new message (User asks a question, AI responds)
-const addMessage = async (req: Request, res: Response) => {
+const addMessage = async (req: Request, res: Response): Promise<any> => {
   const { documentId, question, pdfText } = req.body;
 
   // if(user && user?._id){

@@ -12,10 +12,9 @@ import { OPENAI_API_KEY } from "../utils/keys.js";
 const openai = new OpenAI({ apiKey: OPENAI_API_KEY });
 console.log("OpenAI API Key:", OPENAI_API_KEY);
 
-
 // let pdfText: string | "" = "";
 
-const Upload = async (req: Request, res: Response) => {
+const Upload = async (req: Request, res: Response): Promise<any> => {
   const { documentId } = req.params;
 
   try {
@@ -67,11 +66,16 @@ const Upload = async (req: Request, res: Response) => {
   }
 };
 
-const askQuestion = async (req: Request, res: Response, question: string, pdfText: string) => {
-  // const {  } = req.body;
-
+const askQuestion = async (
+  req: Request,
+  res: Response,
+  question: string,
+  pdfText: string
+): Promise<any> => {
   if (!question || !pdfText) {
-    return res.status(400).send("Question and PDF text are required.");
+    return res
+      .status(StatusCodes.BAD_REQUEST)
+      .send("Question and PDF text are required.");
   }
 
   try {

@@ -17,7 +17,7 @@ interface CustomRequest extends Request {
 }
 
 // update user with user.save()
-const updateUser = async (req: Request, res: Response) => {
+const updateUser = async (req: Request, res: Response): Promise<any> => {
   const { email, fName, lName, password } = req.body;
   if (!email || !fName || !lName || !password) {
     throw new BadRequestError("Please provide all values");
@@ -101,40 +101,55 @@ const updateUser = async (req: Request, res: Response) => {
 //   });
 // };
 
-const currentUser = async (req: Request, res: Response) => {
-  // if (!req.user || !req.user.email) {
-  //   throw new UnAuthenticatedError("User is not authenticated");
-  // }
+const currentUser = async (req: Request, res: Response): Promise<any> => {
+  try {
+    const user = await User.findOne({ _id: req.user?.userId });
 
-  const user = await User.findOne({ _id: req.user?.userId });
+    if (!user) {
+      return res
+        .status(StatusCodes.NOT_FOUND)
+        .json({ sucess: false, msg: "User not found" });
+    }
 
-  if (!user) {
-    throw new NotFoundError("User not found");
+    if (
+      !user._id ||
+      !user.email ||
+      !user.fName ||
+      !user.lName ||
+      !user.isProfileComplete ||
+      !user.tier
+    ) {
+      return res
+        .status(StatusCodes.BAD_REQUEST)
+        .json({ sucess: false, msg: "Incomplete user data" });
+    }
+
+    const tokenUser: TokenPayload = createTokenUser({
+      userId: user?._id.toString(),
+      email: user?.email,
+      fName: user?.fName,
+      lName: user?.lName,
+      isProfileComplete: user?.isProfileComplete,
+      tier: user?.tier,
+    });
+
+    res
+      .status(StatusCodes.OK)
+      .json({ success: true, msg: "Fetched Succesfully", user: tokenUser });
+  } catch (error: any) {
+    console.error(
+      "Error fetching file details:",
+      error.response?.data || error.message
+    );
+
+    res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
+      success: false,
+      msg:
+        error.response?.data ||
+        error.message ||
+        "Something went wrong, please try again",
+    });
   }
-
-  if (
-    !user._id ||
-    !user.email ||
-    !user.fName ||
-    !user.lName ||
-    !user.isProfileComplete ||
-    !user.tier
-  ) {
-    throw new UnAuthenticatedError("Incomplete user data");
-  }
-
-  const tokenUser: TokenPayload = createTokenUser({
-    userId: user?._id.toString(),
-    email: user?.email,
-    fName: user?.fName,
-    lName: user?.lName,
-    isProfileComplete: user?.isProfileComplete,
-    tier: user?.tier,
-  });
-
-  res
-    .status(StatusCodes.OK)
-    .json({ success: true, msg: "Fetched Succesfully", user: tokenUser });
 };
 
 // const addNumberOfEditsToExistingUsers = async () => {

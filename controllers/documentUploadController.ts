@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import User from "../models/User.js";
 import DocumentUpload from "../models/DocumentUpload.js";
+import QuestionsMessage from "../models/QuestionsMessage.js";
 
 import { StatusCodes } from "http-status-codes";
 import { BadRequestError, NotFoundError } from "../errors/index.js";
@@ -8,32 +9,83 @@ import { BadRequestError, NotFoundError } from "../errors/index.js";
 import axios from "axios";
 import { GOOGLE_DRIVE_APIKEY } from "../utils/keys.js";
 
-const uploadDocumentByFile = async (req: Request, res: Response) => {
-  const { fileUrl, fileType, fileName, fileSize, fileExtension } = req.body;
+const uploadDocumentByFile = async (
+  req: Request,
+  res: Response
+): Promise<any> => {
+  try {
+    const { fileUrl, fileType, fileName, fileSize, fileExtension } = req.body;
 
-  if (!fileUrl || !fileType || !fileName || !fileSize || !fileExtension) {
-    throw new BadRequestError("Please provide all values");
+    if (!fileUrl || !fileType || !fileName || !fileSize || !fileExtension) {
+      return res
+        .status(StatusCodes.BAD_REQUEST)
+        .json({ success: false, msg: "Please provide all values" });
+    }
+
+    const user = await User.findOne({ _id: req.user?.userId });
+    if (!user) {
+      return res
+        .status(StatusCodes.NOT_FOUND)
+        .json({ sucess: false, msg: "User not found" });
+    }
+
+    // Ensure subscription status is up-to-date
+    await user.updateSubscriptionStatus();
+
+    // Define upload limits
+    const uploadLimits: Record<"Free" | "Premium" | "Enterprise", number> = {
+      Free: 10,
+      Premium: 50,
+      Enterprise: Infinity, // No limit for Enterprise users
+    };
+
+    // Ensure user.tier is valid, defaulting to "Free" if undefined
+    const userTier = user.tier ?? "Free";
+
+    const maxUploads = uploadLimits[userTier] ?? 10; // Default to Free plan
+
+    // Ensure numberOfUpload is a number (default to 0 if undefined)
+    const currentUploads = user.numberOfUpload ?? 0;
+
+    // Check upload limit
+    if (currentUploads >= maxUploads) {
+      return res.status(StatusCodes.BAD_REQUEST).json({
+        success: false,
+        msg: "Upload limit reached for your plan. Upgrade to upload more.",
+      });
+    }
+
+    const newDocument = await DocumentUpload.create({
+      userId: user._id,
+      fileUrl,
+      fileType,
+      fileName,
+      fileSize,
+      fileExtension,
+    });
+
+    user.numberOfUpload = (user.numberOfUpload ?? 0) + 1;
+    await user.save();
+
+    res.status(StatusCodes.CREATED).json({
+      success: true,
+      msg: "Document uploaded successfully",
+      document: newDocument,
+    });
+  } catch (error: any) {
+    console.error(
+      "Error fetching file details:",
+      error.response?.data || error.message
+    );
+
+    res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
+      success: false,
+      msg:
+        error.response?.data ||
+        error.message ||
+        "Something went wrong, please try again",
+    });
   }
-
-  const user = await User.findOne({ _id: req.user?.userId });
-  if (!user) {
-    throw new NotFoundError("User not found");
-  }
-
-  const newDocument = await DocumentUpload.create({
-    userId: user._id,
-    fileUrl,
-    fileType,
-    fileName,
-    fileSize,
-    fileExtension,
-  });
-
-  res.status(StatusCodes.CREATED).json({
-    success: true,
-    msg: "Document uploaded successfully",
-    document: newDocument,
-  });
 };
 
 // Function to extract the Google Drive file ID from a URL
@@ -44,7 +96,7 @@ const extractFileId = (url: string) => {
 };
 
 // Function to get file details from Google Drive
-const uploadDocumentByURL = async (req: Request, res: Response) => {
+const uploadDocumentByURL = async (req: Request, res: Response): Promise<any> => {
   const { fileUrl } = req.body;
 
   if (!fileUrl) {
@@ -140,7 +192,7 @@ const uploadDocumentByURL = async (req: Request, res: Response) => {
   }
 };
 
-const allDocuments = async (req: Request, res: Response) => {
+const allDocuments = async (req: Request, res: Response): Promise<any> => {
   try {
     const user = await User.findOne({ _id: req.user?.userId });
     if (!user) {
@@ -152,7 +204,7 @@ const allDocuments = async (req: Request, res: Response) => {
     if (documents.length < 0) {
       res.status(StatusCodes.OK).json({
         success: true,
-        msg: "you have no documents",
+        msg: "You have no documents",
         // documents
       });
     } else {
@@ -173,13 +225,19 @@ const allDocuments = async (req: Request, res: Response) => {
   }
 };
 
-const deleteSingleDocument = async (req: Request, res: Response) => {
+const deleteSingleDocument = async (req: Request, res: Response): Promise<any> => {
   const { documentId } = req.params;
   try {
     const document = await DocumentUpload.findOneAndDelete({ _id: documentId });
     if (!document) {
-      return;
+      return res.status(StatusCodes.BAD_REQUEST).json({
+        success: false,
+        msg: "Something went wrong while deleting the document",
+      });
     }
+
+    // Delete all messages related to the document
+    await QuestionsMessage.deleteMany({ document: documentId });
 
     res
       .status(StatusCodes.OK)
