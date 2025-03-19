@@ -7,6 +7,7 @@ import {
 import Stripe from "stripe";
 
 import Payment from "../models/Payment.js";
+import User from "../models/User.js";
 
 const stripe = new Stripe(STRIPE_SECRET_KEY_LIVE, {
   apiVersion: "2024-12-18.acacia",
@@ -26,7 +27,7 @@ const paymentHandler = async (req: Request, res: Response) => {
                 name: "Premium Subscription Payment",
                 description: "$9.90/Month subscription",
               },
-              unit_amount: 40, // Amount in cents
+              unit_amount: 990, // Amount in cents
             },
             quantity: 1,
           },
@@ -93,6 +94,12 @@ const webhookHandler = async (req: Request, res: Response) => {
     // Handle the event
     switch (event.type) {
       case "charge.succeeded":
+      case "charge.captured":
+      case "charge.expired":
+      case "charge.failed":
+      case "charge.pending":
+      case "charge.refunded":
+      case "charge.updated":
         const charge = event.data.object as Stripe.Charge;
 
         // if (session.payment_status === "paid") {
@@ -100,9 +107,9 @@ const webhookHandler = async (req: Request, res: Response) => {
         const paymentDetails = {
           userId: metadata.userId || "unknown",
           email: metadata.email || "unknown",
-          amount: (charge.amount || 0) / 100, // Convert to dollars
+          amount: charge.amount / 100, // Convert to dollars
           currency: charge.currency || "usd",
-          paymentStatus: "paid",
+          paymentStatus: charge.status || "unknown",
           sessionId: charge.id,
           eventType: event.type,
         };
@@ -113,7 +120,36 @@ const webhookHandler = async (req: Request, res: Response) => {
         } catch (err: any) {
           console.error("Database Error:", err.message);
         }
-        // }
+
+        // Update user tier to "premium" only for charge.succeeded
+        if (event.type === "charge.succeeded") {
+          try {
+            // Calculate subscription start and end dates
+            const subscriptionStartDate = new Date(); // Current date and time
+            const subscriptionEndDate = new Date();
+            subscriptionEndDate.setMonth(subscriptionEndDate.getMonth() + 1); // 1 month from now
+
+            // Assuming you have a User model and a method to update the user's tier
+            const user = await User.findOneAndUpdate(
+              { _id: metadata.userId }, // Find user by userId from metadata
+              {
+                tier: "Premium",
+                subscriptionStatus: "Active",
+                subscriptionStartDate,
+                subscriptionEndDate,
+              }, // Update tier to "premium"
+              { new: true } // Return the updated user
+            );
+
+            if (user) {
+              console.log("User tier updated to premium:", user);
+            } else {
+              console.error("User not found:", metadata.userId);
+            }
+          } catch (err: any) {
+            console.error("Error updating user tier:", err.message);
+          }
+        }
         break;
 
       case "charge.failed":
@@ -137,154 +173,5 @@ const webhookHandler = async (req: Request, res: Response) => {
       .json({ success: false, msg: "Method Not Allowed" });
   }
 };
-
-// const paymentHandler = async (req: Request, res: Response) => {
-//   if (req.method === "POST") {
-//     try {
-//       const session = await stripe.checkout.sessions.create({
-//         payment_method_types: ["card"],
-//         customer_email: req?.user?.email,
-//         // billing_address_collection: "auto",
-//         line_items: [
-//           {
-//             price_data: {
-//               currency: "usd",
-//               product_data: {
-//                 name: "Premium Subscription Payment",
-//                 description: "$9.90/Month subscription",
-//               },
-//               unit_amount: 10, // Amount in cents
-//               // recurring: {
-//               //   interval: "month",
-//               // },
-//             },
-//             quantity: 1,
-//           },
-//         ],
-//         mode: "payment",
-//         // mode: "subscription",
-//         success_url: `${req.headers.origin}/success`,
-//         cancel_url: `${req.headers.origin}/failed`,
-//         metadata: {
-//           userId: req?.user?.userId,
-//           email: req?.user?.email,
-//         },
-//       } as Stripe.Checkout.SessionCreateParams);
-
-//       res.status(StatusCodes.OK).json({ success: true, sessionId: session.id });
-
-//       try {
-//         // Simulate webhook in the background
-//         (async () => {
-//           const simulatedEvent = {
-//             id: "we_1QilzvLOTQKmd0QoAdFNnSFi",
-//             object: "event",
-//             type: "checkout.session.completed",
-//             data: {
-//               object: session,
-//             },
-//           };
-
-//           const simulatedReq = {
-//             method: "POST",
-//             headers: { "stripe-signature": STRIPE_WEBHOOK_SECRET_LIVE },
-//             body: simulatedEvent,
-//           } as unknown as Request;
-
-//           const simulatedRes = {
-//             status: (code: number) => ({
-//               json: (data: any) => console.log("Webhook Response:", code, data),
-//               send: (data: string) =>
-//                 console.log("Webhook Response:", code, data),
-//             }),
-//             setHeader: () => {},
-//             end: () => {},
-//           } as unknown as Response;
-
-//           await webhookHandler(simulatedReq, simulatedRes);
-//         })();
-//       } catch (webhookError) {
-//         console.error("Webhook simulation failed:", webhookError);
-//         // Could add monitoring/alerting here
-//       }
-//     } catch (err: any) {
-//       console.log(err);
-
-//       res
-//         .status(StatusCodes.INTERNAL_SERVER_ERROR)
-//         .json({ success: false, error: err.message });
-//     }
-//   } else {
-//     res.setHeader("Allow", "POST");
-//     res
-//       .status(StatusCodes.METHOD_NOT_ALLOWED)
-//       .json({ success: false, msg: "Method Not Allowed" });
-//   }
-// };
-
-// const webhookHandler = async (req: Request, res: Response) => {
-//   if (req.method === "POST") {
-//     const sig = req.headers?.["stripe-signature"];
-//     if (!sig) {
-//       return res
-//         .status(StatusCodes.BAD_REQUEST)
-//         .json({ success: false, msg: "Missing Stripe Signature" });
-//     }
-
-//     let event: Stripe.Event;
-
-//     try {
-//       const rawBody = (req as any).rawBody || "";
-//       event = stripe.webhooks.constructEvent(
-//         rawBody,
-//         sig,
-//         STRIPE_WEBHOOK_SECRET_LIVE
-//       );
-//     } catch (err: any) {
-//       console.error("Webhook Error:", err.message);
-//       return res
-//         .status(StatusCodes.BAD_REQUEST)
-//         .json({ success: false, msg: `Webhook Error: ${err.message}` });
-//     }
-
-//     // Handle the event
-//     if (event.type === "checkout.session.completed") {
-//       //  === "checkout.session.completed"
-//       const session = event.data.object as Stripe.Checkout.Session;
-
-//       // Example: Save payment details to your database
-//       if (session.payment_status === "paid") {
-//       const metadata = session.metadata || {};
-//       const paymentDetails = {
-//         userId: metadata.userId || "unknown",
-//         email: metadata.email || "unknown",
-//         amount: (session.amount_total || 0) / 100, // Handle null amount_total
-//         currency: session.currency || "usd",
-//         paymentStatus: session.payment_status || "unknown",
-//         sessionId: session.id,
-//         eventType: event.type,
-//       };
-
-//       try {
-//         await Payment.create(paymentDetails);
-//         console.log("Payment saved to database:", paymentDetails);
-//       } catch (err: any) {
-//         console.error("Database Error:", err.message);
-//       }
-//     }
-//   }else if (event.type === "checkout.session.async_payment_failed") {
-//     console.log("Payment failed:", event.data.object);
-//   }
-
-//     res
-//       .status(StatusCodes.OK)
-//       .json({ success: true, msg: "Payment Successful" });
-//   } else {
-//     res.setHeader("Allow", "POST");
-//     res
-//       .status(StatusCodes.METHOD_NOT_ALLOWED)
-//       .json({ success: false, msg: "Method Not Allowed" });
-//   }
-// };
 
 export { paymentHandler, webhookHandler };
