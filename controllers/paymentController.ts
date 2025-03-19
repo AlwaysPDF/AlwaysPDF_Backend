@@ -86,32 +86,36 @@ const webhookHandler = async (req: Request, res: Response) => {
 
     // Handle the event
     switch (event.type) {
-      case "checkout.session.completed":
-        const session = event.data.object as Stripe.Checkout.Session;
+      case "charge.succeeded":
+        const charge = event.data.object as Stripe.Charge;
 
-        if (session.payment_status === "paid") {
-          const metadata = session.metadata || {};
-          const paymentDetails = {
-            userId: metadata.userId || "unknown",
-            email: metadata.email || "unknown",
-            amount: (session.amount_total || 0) / 100, // Convert to dollars
-            currency: session.currency || "usd",
-            paymentStatus: session.payment_status || "unknown",
-            sessionId: session.id,
-            eventType: event.type,
-          };
+        // if (session.payment_status === "paid") {
+        const metadata = charge?.metadata || {};
+        const paymentDetails = {
+          userId: metadata.userId || "unknown",
+          email: metadata.email || "unknown",
+          amount: (charge.amount || 0) / 100, // Convert to dollars
+          currency: charge.currency || "usd",
+          paymentStatus: "paid",
+          sessionId: charge.id,
+          eventType: event.type,
+        };
 
-          try {
-            await Payment.create(paymentDetails);
-            console.log("Payment saved to database:", paymentDetails);
-          } catch (err: any) {
-            console.error("Database Error:", err.message);
-          }
+        try {
+          await Payment.create(paymentDetails);
+          console.log("Payment saved to database:", paymentDetails);
+        } catch (err: any) {
+          console.error("Database Error:", err.message);
         }
+        // }
         break;
 
-      case "checkout.session.async_payment_failed":
+      case "charge.failed":
         console.log("Payment failed:", event.data.object);
+        break;
+
+      case "charge.pending":
+        console.log("Payment Pending:", event.data.object);
         break;
 
       default:
