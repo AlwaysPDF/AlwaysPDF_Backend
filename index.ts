@@ -6,7 +6,16 @@ dotenv.config();
 import "express-async-errors";
 import morgan from "morgan";
 import cors from "cors";
+import bodyParser from "body-parser";
 // import helmet from "helmet"; // Import Helmet directly
+
+// Middleware to parse JSON and raw body for webhooks
+app.use(bodyParser.json()); // For JSON payloads
+app.use(
+  bodyParser.raw({
+    type: "application/json", // Only parse JSON payloads
+  })
+);
 
 // Serve static files from the 'public' directory
 // app.use(express.static("public"));
