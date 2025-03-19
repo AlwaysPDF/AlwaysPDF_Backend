@@ -17,7 +17,7 @@ const paymentHandler = async (req: Request, res: Response) => {
     try {
       const session = await stripe.checkout.sessions.create({
         payment_method_types: ["card"],
-        customer_email: req?.user?.email,
+        customer_email: req.user?.email,
         line_items: [
           {
             price_data: {
@@ -34,10 +34,16 @@ const paymentHandler = async (req: Request, res: Response) => {
         mode: "payment",
         success_url: `${req.headers.origin}/success`,
         cancel_url: `${req.headers.origin}/failed`,
-        metadata: {
-          userId: req?.user?.userId,
-          email: req?.user?.email,
+        payment_intent_data: {
+          metadata: {
+            userId: req.user?.userId, // Pass metadata to the payment intent
+            email: req.user?.email,
+          },
         },
+        // metadata: {
+        //   userId: req.user?.userId,
+        //   email: req.user?.email,
+        // },
       } as Stripe.Checkout.SessionCreateParams);
 
       // Return the session ID to the client
@@ -90,7 +96,7 @@ const webhookHandler = async (req: Request, res: Response) => {
         const charge = event.data.object as Stripe.Charge;
 
         // if (session.payment_status === "paid") {
-        const metadata = charge?.metadata || {};
+        const metadata = charge.metadata || {};
         const paymentDetails = {
           userId: metadata.userId || "unknown",
           email: metadata.email || "unknown",
