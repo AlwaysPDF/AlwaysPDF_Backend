@@ -58,7 +58,7 @@ const paymentHandler = async (req: Request, res: Response) => {
 
 const webhookHandler = async (req: Request, res: Response) => {
   if (req.method === "POST") {
-    const sig = req.headers["stripe-signature"] as string;
+    const sig = req.headers["stripe-signature"];
     // With express.raw middleware, req.body should already be a Buffer
     const payload = req.body;
 
