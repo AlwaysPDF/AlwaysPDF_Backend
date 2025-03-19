@@ -83,7 +83,7 @@ app.use(
     origin: [
       "http://localhost:3000",
       "http://localhost:3001",
-      "https://testalwayspdf.vercel.app",
+      "http://localhost:5173",
       "https://alwayspdf.com",
       "www.alwayspdf.com",
       "https://www.alwayspdf.com",
