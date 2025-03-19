@@ -59,6 +59,9 @@ const paymentHandler = async (req: Request, res: Response) => {
 const webhookHandler = async (req: Request, res: Response) => {
   if (req.method === "POST") {
     const sig = req.headers["stripe-signature"] as string;
+    // With express.raw middleware, req.body should already be a Buffer
+    const payload = req.body;
+
     if (!sig) {
       return res
         .status(StatusCodes.BAD_REQUEST)
@@ -69,9 +72,8 @@ const webhookHandler = async (req: Request, res: Response) => {
 
     try {
       // Use the raw body from the request
-      const rawBody = req.body.toString("utf8"); // Convert Buffer to string
       event = stripe.webhooks.constructEvent(
-        rawBody, // Use the raw body
+        payload, // Use the raw body
         sig,
         STRIPE_WEBHOOK_SECRET_LIVE
       );

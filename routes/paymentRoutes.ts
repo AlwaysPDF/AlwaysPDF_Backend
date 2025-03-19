@@ -9,6 +9,8 @@ import {
 } from "../controllers/paymentController.js";
 
 router.route("/create-checkout-session").post(authenticateUser, paymentHandler);
-router.route("/webhook").post(webhookHandler);
+router
+  .route("/webhook")
+  .post(express.raw({ type: "application/json" }), webhookHandler);
 
 export default router;
