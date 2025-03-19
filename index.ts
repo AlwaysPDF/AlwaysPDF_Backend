@@ -9,14 +9,6 @@ import cors from "cors";
 import bodyParser from "body-parser";
 // import helmet from "helmet"; // Import Helmet directly
 
-// Middleware to parse JSON and raw body for webhooks
-app.use(bodyParser.json()); // For JSON payloads
-app.use(
-  bodyParser.raw({
-    type: "application/json", // Only parse JSON payloads
-  })
-);
-
 // Serve static files from the 'public' directory
 // app.use(express.static("public"));
 
@@ -58,6 +50,9 @@ import messageRouter from "./routes/messageRoutes.js";
 // payment router
 import paymentRouter from "./routes/paymentRoutes.js";
 
+//webhook controller
+import { webhookHandler } from "./controllers/paymentController.js";
+
 // firebase router
 // import firebaseRouter from "./routes/firebaseRoutes";
 
@@ -70,6 +65,12 @@ import {
   // authenticateAdmin,
 } from "./middleware/authentication.js";
 
+app.post(
+  "/api/v1/payment/webhook",
+  express.raw({ type: "application/json" }),
+  webhookHandler
+);
+
 if (process.env.NODE_ENV !== "production") {
   app.use(morgan("dev"));
 }
@@ -79,6 +80,13 @@ if (process.env.NODE_ENV !== "production") {
 app.set("trust proxy", 1);
 app.use(express.json({ limit: "50mb" }));
 app.use(express.json());
+// Middleware to parse JSON and raw body for webhooks
+app.use(bodyParser.json()); // For JSON payloads
+app.use(
+  bodyParser.raw({
+    type: "application/json", // Only parse JSON payloads
+  })
+);
 app.use(express.urlencoded({ limit: "50mb" }));
 app.use(express.urlencoded({ extended: true })); // Example middleware
 
