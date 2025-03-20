@@ -119,20 +119,18 @@ const uploadDocumentByURL = async (req: Request, res: Response): Promise<any> =>
     }
 
     const apiKey = GOOGLE_DRIVE_APIKEY;
-    console.log(apiKey);
 
     const apiUrl = `https://www.googleapis.com/drive/v3/files/${fileId}?key=${apiKey}&fields=name,size,mimeType`;
 
     const response = await axios.get(apiUrl);
     const { name, size, mimeType } = response.data;
-    // console.log(response.data);
 
     // Determine the file extension based on the MIME type
     const extension = mimeType.split("/")[1];
 
-    console.log(`File Name: ${name}`);
-    console.log(`File Size: ${(size / 1024).toFixed(2)} KB`);
-    console.log(`File Extension: ${extension}`);
+    // console.log(`File Name: ${name}`);
+    // console.log(`File Size: ${(size / 1024).toFixed(2)} KB`);
+    // console.log(`File Extension: ${extension}`);
 
     // Determine the file extension from MIME type
     let fileExtension = "";

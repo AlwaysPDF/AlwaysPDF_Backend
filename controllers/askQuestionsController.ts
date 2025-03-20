@@ -10,7 +10,6 @@ import { OPENAI_API_KEY } from "../utils/keys.js";
 
 // / New (i.e., OpenAI NodeJS SDK v4)
 const openai = new OpenAI({ apiKey: OPENAI_API_KEY });
-console.log("OpenAI API Key:", OPENAI_API_KEY);
 
 // let pdfText: string | "" = "";
 
@@ -28,7 +27,6 @@ const Upload = async (req: Request, res: Response): Promise<any> => {
 
     const pdfUrl = document?.fileUrl;
     const fileExtension = document?.fileExtension;
-    console.log(pdfUrl);
 
     if (!pdfUrl || !fileExtension) {
       return res.status(StatusCodes.NOT_FOUND).json({

@@ -116,7 +116,7 @@ const webhookHandler = async (req: Request, res: Response) => {
 
         try {
           await Payment.create(paymentDetails);
-          console.log("Payment saved to database:", paymentDetails);
+          // console.log("Payment saved to database:", paymentDetails);
         } catch (err: any) {
           console.error("Database Error:", err.message);
         }
@@ -142,7 +142,7 @@ const webhookHandler = async (req: Request, res: Response) => {
             );
 
             if (user) {
-              console.log("User tier updated to premium:", user);
+              // console.log("User tier updated to premium:", user);
             } else {
               console.error("User not found:", metadata.userId);
             }
