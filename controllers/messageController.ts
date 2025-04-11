@@ -11,9 +11,8 @@ import User from "../models/User.js";
 
 // Get messages for a specific PDF
 const getMessages = async (req: Request, res: Response): Promise<any> => {
-  const { documentId } = req.params;
-
   try {
+    const { documentId } = req.params;
     const user = await User.findOne({ _id: req.user?.userId });
     if (!user) {
       return res
@@ -42,8 +41,7 @@ const getMessages = async (req: Request, res: Response): Promise<any> => {
   } catch (error: any) {
     res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
       success: false,
-      msg:
-        "Something went wrong, please try again",
+      msg: "Something went wrong, please try again",
     });
   }
 };
@@ -51,20 +49,20 @@ const getMessages = async (req: Request, res: Response): Promise<any> => {
 // Add a new message (User asks a question, AI responds)
 const addMessage = async (req: Request, res: Response): Promise<any> => {
   try {
-  const { documentId, question, pdfText, modelType } = req.body;
+    const { documentId, question, pdfText, modelType } = req.body;
 
-  if (!documentId || !question || !pdfText || !modelType) {
-    return res.status(StatusCodes.BAD_REQUEST).json({
-      success: false,
-      msg: "Please provide all values",
-    });
-  }
+    if (!documentId || !question || !pdfText || !modelType) {
+      return res.status(StatusCodes.BAD_REQUEST).json({
+        success: false,
+        msg: "Please provide all values",
+      });
+    }
 
-  // if(user && user?._id){
-  //     return res
-  //   .status(StatusCodes.NOT_FOUND)
-  //   .json({ success: false, msg: "No PDF URL provided." });
-  // }
+    // if(user && user?._id){
+    //     return res
+    //   .status(StatusCodes.NOT_FOUND)
+    //   .json({ success: false, msg: "No PDF URL provided." });
+    // }
 
     const user = await User.findOne({ _id: req?.user?.userId });
     if (!user) {
