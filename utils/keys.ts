@@ -1,8 +1,10 @@
 import * as dotenv from 'dotenv';
 dotenv.config();
 
-export const OPENAI_API_KEY = process.env['OPENAI_API_KEY'];
-// export const OPENAI_API_KEY = process.env.OPENAI_API_KEY
+// export const OPENAI_API_KEY = process.env['OPENAI_API_KEY'];
+export const DEEPSEEK_API_KEY = process.env['DEEPSEEK_API_KEY'];
+export const ANTHROPIC_API_KEY = process.env['ANTHROPIC_API_KEY'];
+export const OPENAI_API_KEY = process.env.OPENAI_API_KEY
 
 export const GOOGLE_DRIVE_APIKEY = process.env.GOOGLE_DRIVE_APIKEY
 

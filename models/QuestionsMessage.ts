@@ -7,7 +7,7 @@ interface QuestionsMessageDocument extends Document {
   sender: "user" | "ai"; // Identifies who sent the message (user or AI)
   role: "user" | "ai"; // Role of the sender
   document: mongoose.Schema.Types.ObjectId; // Reference to the uploaded PDF document
-  response: string; // The AI's response to the question
+  modelType?: string; // The AI's response to the question
 }
 
 // Define the schema for the chat messages
@@ -15,31 +15,32 @@ const QuestionsMessageSchema = new Schema<QuestionsMessageDocument>(
   {
     message: {
       type: String,
-      required: true, // The user's question is required
+      required: true,
     },
     user: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
-      required: true, // The user reference is required
+      required: true,
     },
     sender: {
       type: String,
       enum: ["user", "ai"],
-      required: true, // Identifies whether the message is from the user or AI
+      required: true,
     },
     role: {
       type: String,
       enum: ["user", "ai"],
-      required: true, // Specifies the role of the sender
+      required: true,
     },
     document: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "DocumentUpload", // Reference to the uploaded PDF document
-      required: true, // The document reference is required
+      ref: "DocumentUpload",
+      required: true,
     },
-    response: {
+    modelType: {
       type: String,
-      required: false, // The AI's response, only present if the sender is "ai"
+      required: true,
+      default: "chatgpt",
     },
   },
   {

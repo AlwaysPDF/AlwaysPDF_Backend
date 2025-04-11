@@ -18,68 +18,83 @@ interface CustomRequest extends Request {
 
 // update user with user.save()
 const updateUser = async (req: Request, res: Response): Promise<any> => {
-  const { email, fName, lName, password } = req.body;
-  if (!email || !fName || !lName || !password) {
-    throw new BadRequestError("Please provide all values");
+  try {
+    const { email, fName, lName, password } = req.body;
+    if (!email || !fName || !lName || !password) {
+      throw new BadRequestError("Please provide all values");
+    }
+
+    const user = await User.findOne({ email });
+
+    if (!user) {
+      throw new NotFoundError("User doesn't exist");
+    }
+
+    if (!user.isVerified) {
+      throw new UnAuthenticatedError("Please verify your email");
+    }
+
+    // Ensure required fields are not undefined
+    if (user.numberOfEdits === undefined) {
+      throw new UnAuthenticatedError("Incomplete user data");
+    }
+
+    if (user?.numberOfEdits > 0) {
+      throw new BadRequestError("User can't edit profile again");
+    }
+
+    user.fName = fName;
+    user.lName = lName;
+    user.password = password;
+    user.numberOfEdits = user.numberOfEdits + 1;
+    user.isProfileComplete = true;
+    await user.save();
+
+    // Re-fetch the user to ensure the latest data is checked
+    const updatedUser = await User.findOne({ email });
+    if (
+      !updatedUser ||
+      !user._id ||
+      !user.email ||
+      !user.fName ||
+      !user.lName ||
+      !user.password ||
+      !user.isProfileComplete ||
+      !user.tier
+    ) {
+      throw new UnAuthenticatedError("Incomplete user data");
+    }
+
+    const tokenUser: TokenPayload = createTokenUser({
+      userId: user?._id.toString(),
+      email: user?.email,
+      fName: user?.fName,
+      lName: user?.lName,
+      isProfileComplete: user?.isProfileComplete,
+      tier: user?.tier,
+    });
+
+    // const token = createJWT({ payload: tokenUser })
+    res.status(StatusCodes.OK).json({
+      success: true,
+      msg: "Profile updated successfully",
+      user: tokenUser,
+      // token,
+    });
+  } catch (error: any) {
+    console.error(
+      "Error updating details:",
+      error.response?.data || error.message
+    );
+
+    res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
+      success: false,
+      msg:
+        error.response?.data ||
+        error.message ||
+        "Something went wrong, please try again",
+    });
   }
-
-  const user = await User.findOne({ email });
-
-  if (!user) {
-    throw new NotFoundError("User doesn't exist");
-  }
-
-  if (!user.isVerified) {
-    throw new UnAuthenticatedError("Please verify your email");
-  }
-
-  // Ensure required fields are not undefined
-  if (user.numberOfEdits === undefined) {
-    throw new UnAuthenticatedError("Incomplete user data");
-  }
-
-  if (user?.numberOfEdits > 0) {
-    throw new BadRequestError("User can't edit profile again");
-  }
-
-  user.fName = fName;
-  user.lName = lName;
-  user.password = password;
-  user.numberOfEdits = user.numberOfEdits + 1;
-  user.isProfileComplete = true;
-  await user.save();
-
-  // Re-fetch the user to ensure the latest data is checked
-  const updatedUser = await User.findOne({ email });
-  if (
-    !updatedUser ||
-    !user._id ||
-    !user.email ||
-    !user.fName ||
-    !user.lName ||
-    !user.password ||
-    !user.isProfileComplete ||
-    !user.tier
-  ) {
-    throw new UnAuthenticatedError("Incomplete user data");
-  }
-
-  const tokenUser: TokenPayload = createTokenUser({
-    userId: user?._id.toString(),
-    email: user?.email,
-    fName: user?.fName,
-    lName: user?.lName,
-    isProfileComplete: user?.isProfileComplete,
-    tier: user?.tier,
-  });
-
-  // const token = createJWT({ payload: tokenUser })
-  res.status(StatusCodes.OK).json({
-    success: true,
-    msg: "Profile updated successfully",
-    user: tokenUser,
-    // token,
-  });
 };
 
 // const getSingleUser = async (req, res) => {
@@ -138,7 +153,7 @@ const currentUser = async (req: Request, res: Response): Promise<any> => {
       .json({ success: true, msg: "Fetched Succesfully", user: tokenUser });
   } catch (error: any) {
     console.error(
-      "Error fetching file details:",
+      "Error fetchingdetails:",
       error.response?.data || error.message
     );
 

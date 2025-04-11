@@ -1,6 +1,10 @@
 import { Request, Response } from "express";
 import QuestionsMessage from "../models/QuestionsMessage.js";
-import { askQuestion } from "./askQuestionsController.js";
+import {
+  askChatGPTQuestion,
+  askClaudeQuestion,
+  askDeepseekQuestion,
+} from "./askQuestionsController.js";
 
 import { StatusCodes } from "http-status-codes";
 import User from "../models/User.js";
@@ -25,6 +29,7 @@ const getMessages = async (req: Request, res: Response): Promise<any> => {
     const projectedMessages = messages.map((msg) => ({
       fromSelf: msg.sender === "user",
       message: msg.message,
+      modelType: msg?.modelType || "chatpgt",
       //   response: msg.sender === "ai" ? msg.response : null,
     }));
 
@@ -35,18 +40,25 @@ const getMessages = async (req: Request, res: Response): Promise<any> => {
       projectedMessages,
     });
   } catch (error: any) {
-    res
-      .status(StatusCodes.INTERNAL_SERVER_ERROR)
-      .json({ success: false,msg:
-        error.response?.data ||
-        error.message ||
-        "Something went wrong, please try again" });
+    res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
+      success: false,
+      msg:
+        "Something went wrong, please try again",
+    });
   }
 };
 
 // Add a new message (User asks a question, AI responds)
 const addMessage = async (req: Request, res: Response): Promise<any> => {
-  const { documentId, question, pdfText } = req.body;
+  try {
+  const { documentId, question, pdfText, modelType } = req.body;
+
+  if (!documentId || !question || !pdfText || !modelType) {
+    return res.status(StatusCodes.BAD_REQUEST).json({
+      success: false,
+      msg: "Please provide all values",
+    });
+  }
 
   // if(user && user?._id){
   //     return res
@@ -54,7 +66,6 @@ const addMessage = async (req: Request, res: Response): Promise<any> => {
   //   .json({ success: false, msg: "No PDF URL provided." });
   // }
 
-  try {
     const user = await User.findOne({ _id: req?.user?.userId });
     if (!user) {
       return res
@@ -69,10 +80,18 @@ const addMessage = async (req: Request, res: Response): Promise<any> => {
       sender: "user",
       role: "user",
       document: documentId,
+      modelType,
     });
 
-    // Generate AI's response based on the user's question and the document
-    const aiResponse = await askQuestion(req, res, question, pdfText);
+    let aiResponse;
+    if (modelType === "chatgpt") {
+      // Generate AI's response based on the user's question and the document
+      aiResponse = await askChatGPTQuestion(req, res, question, pdfText);
+    } else if (modelType === "claude") {
+      aiResponse = await askClaudeQuestion(req, res, question, pdfText);
+    } else {
+      aiResponse = await askDeepseekQuestion(req, res, question, pdfText);
+    }
 
     // Save the AI's response
     const aiMessage = await QuestionsMessage.create({
@@ -81,7 +100,7 @@ const addMessage = async (req: Request, res: Response): Promise<any> => {
       sender: "ai",
       role: "ai",
       document: documentId,
-      // response: aiResponse
+      modelType,
     });
 
     if (userMessage && aiMessage) {
