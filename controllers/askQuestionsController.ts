@@ -15,7 +15,6 @@ import {
 
 // / New (i.e., OpenAI NodeJS SDK v4)
 const openai = new OpenAI({ apiKey: OPENAI_API_KEY });
-console.log(OPENAI_API_KEY, "in line 18")
 const deepseek = new OpenAI({
   baseURL: "https://api.deepseek.com",
   apiKey: DEEPSEEK_API_KEY,
