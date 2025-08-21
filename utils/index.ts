@@ -5,7 +5,7 @@ import {
   attachCookiesToResponse,
 } from "./jwt.js";
 import {
-  OPENAI_API_KEY,
+  // OPENAI_API_KEY,
   GOOGLE_DRIVE_APIKEY,
   STRIPE_SECRET_KEY_LIVE,
   STRIPE_WEBHOOK_SECRET_TEST,
@@ -25,7 +25,7 @@ export {
   createAdminJWT,
   isTokenValid,
   attachCookiesToResponse,
-  OPENAI_API_KEY,
+  // OPENAI_API_KEY,
   GOOGLE_DRIVE_APIKEY,
   STRIPE_SECRET_KEY_LIVE,
   STRIPE_WEBHOOK_SECRET_TEST,
