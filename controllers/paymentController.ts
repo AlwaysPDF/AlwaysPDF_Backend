@@ -14,6 +14,7 @@ const stripe = new Stripe(STRIPE_SECRET_KEY_LIVE, {
 });
 
 const paymentHandler = async (req: Request, res: Response) => {
+  const { amount } = req.body;
   if (req.method === "POST") {
     try {
       const session = await stripe.checkout.sessions.create({
@@ -27,7 +28,7 @@ const paymentHandler = async (req: Request, res: Response) => {
                 name: "Premium Subscription Payment",
                 description: "$9.90/Month subscription",
               },
-              unit_amount: 990, // Amount in cents
+              unit_amount: amount || 990, // Amount in cents
             },
             quantity: 1,
           },

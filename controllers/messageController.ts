@@ -82,13 +82,22 @@ const addMessage = async (req: Request, res: Response): Promise<any> => {
     });
 
     let aiResponse;
-    if (modelType === "chatgpt") {
-      // Generate AI's response based on the user's question and the document
-      aiResponse = await askChatGPTQuestion(req, res, question, pdfText);
-    } else if (modelType === "claude") {
-      aiResponse = await askClaudeQuestion(req, res, question, pdfText);
-    } else {
-      aiResponse = await askDeepseekQuestion(req, res, question, pdfText);
+    try {
+      if (modelType === "chatgpt") {
+        aiResponse = await askChatGPTQuestion(question, pdfText);
+      } else if (modelType === "claude") {
+        aiResponse = await askClaudeQuestion(question, pdfText);
+      } else {
+        aiResponse = await askDeepseekQuestion(question, pdfText);
+      }
+    } catch (error: any) {
+      console.error("AI API error:", error?.message || error);
+
+      return res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
+        success: false,
+        msg: "Failed to get response from AI model",
+        error: error?.message || "Unknown error",
+      });
     }
 
     // Save the AI's response
@@ -114,12 +123,10 @@ const addMessage = async (req: Request, res: Response): Promise<any> => {
       });
     }
   } catch (error: any) {
+    console.log("Error ading messages: ", error);
     res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
       success: false,
-      msg:
-        error.response?.data ||
-        error.message ||
-        "Something went wrong, please try again",
+      msg: "Something went wrong, please try again",
     });
   }
 };

@@ -73,17 +73,11 @@ const uploadDocumentByFile = async (
       document: newDocument,
     });
   } catch (error: any) {
-    console.error(
-      "Error fetching file details:",
-      error.response?.data || error.message
-    );
+    console.error("Error fetching file details:", error);
 
     res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
       success: false,
-      msg:
-        error.response?.data ||
-        error.message ||
-        "Something went wrong, please try again",
+      msg: "Internal Server Error",
     });
   }
 };
@@ -96,7 +90,10 @@ const extractFileId = (url: string) => {
 };
 
 // Function to get file details from Google Drive
-const uploadDocumentByURL = async (req: Request, res: Response): Promise<any> => {
+const uploadDocumentByURL = async (
+  req: Request,
+  res: Response
+): Promise<any> => {
   const { fileUrl } = req.body;
 
   if (!fileUrl) {
@@ -175,17 +172,11 @@ const uploadDocumentByURL = async (req: Request, res: Response): Promise<any> =>
       document: newDocument,
     });
   } catch (error: any) {
-    console.error(
-      "Error fetching file details:",
-      error.response?.data || error.message
-    );
+    console.error("Error fetching file details:", error);
 
     res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
       success: false,
-      msg:
-        error.response?.data ||
-        error.message ||
-        "Something went wrong, please try again",
+      msg: "Internal Server Error",
     });
   }
 };
@@ -213,17 +204,18 @@ const allDocuments = async (req: Request, res: Response): Promise<any> => {
       });
     }
   } catch (error: any) {
+    console.error("Error fetching file details:", error);
     res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
       success: false,
-      msg:
-        error.response?.data ||
-        error.message ||
-        "Something went wrong, please try again",
+      msg: "Internal Server Error",
     });
   }
 };
 
-const deleteSingleDocument = async (req: Request, res: Response): Promise<any> => {
+const deleteSingleDocument = async (
+  req: Request,
+  res: Response
+): Promise<any> => {
   const { documentId } = req.params;
   try {
     const document = await DocumentUpload.findOneAndDelete({ _id: documentId });

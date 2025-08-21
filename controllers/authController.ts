@@ -11,8 +11,8 @@ import {
   createHash,
 } from "../utils/index.js";
 
-import crypto from "crypto";
 import { TokenPayload } from "../type.js";
+import { TokenGenerator } from "../helpers/index.js";
 // import { noOfEmails } from "./emailStatisticsController.js";
 
 // register
@@ -28,18 +28,11 @@ const register = async (req: Request, res: Response): Promise<any> => {
       });
     }
 
-    const bytes = crypto.randomBytes(2);
-    const number = bytes.readUInt16BE(0);
-    const fourDigitNumber = number % 10000; // Ensure it's 4 digits
-
-    const verificationToken: string = fourDigitNumber
-      .toString()
-      .padStart(4, "0");
-
-    const sixtyMinutes = 1000 * 60 * 60;
-    const verificationTokenExpirationDate = new Date(Date.now() + sixtyMinutes);
-
-    const finalVerificationToken: string = createHash(verificationToken);
+    const {
+      finalVerificationToken,
+      verificationToken,
+      verificationTokenExpirationDate,
+    } = await TokenGenerator();
 
     const user = await User.create({
       email,
@@ -136,10 +129,7 @@ const verifyEmail = async (req: Request, res: Response): Promise<any> => {
       });
     }
   } catch (error: any) {
-    console.error(
-      "Error fetching file details:",
-      error.response?.data || error.message
-    );
+    console.error("Error fetching file details:", error);
 
     res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
       success: false,
@@ -224,10 +214,7 @@ const login = async (req: Request, res: Response): Promise<any> => {
       token,
     });
   } catch (error: any) {
-    console.error(
-      "Error fetching file details:",
-      error.response?.data || error.message
-    );
+    console.error("Error fetching file details:", error);
 
     res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
       success: false,
@@ -269,11 +256,11 @@ const forgotPassword = async (req: Request, res: Response): Promise<any> => {
       });
     }
 
-    const bytes = crypto.randomBytes(2);
-    const number = bytes.readUInt16BE(0);
-    const fourDigitNumber = number % 10000; // Ensure it's 4 digits
-
-    const passwordToken = fourDigitNumber.toString().padStart(4, "0");
+    const {
+      finalVerificationToken,
+      verificationToken,
+      verificationTokenExpirationDate,
+    } = await TokenGenerator();
 
     if (
       !user._id ||
@@ -292,14 +279,11 @@ const forgotPassword = async (req: Request, res: Response): Promise<any> => {
     await sendResetPasswordEmail({
       fName: user?.fName,
       email: user.email,
-      token: passwordToken,
+      token: verificationToken,
     });
 
-    const tenMinutes = 1000 * 60 * 5;
-    const passwordTokenExpirationDate = new Date(Date.now() + tenMinutes);
-
-    user.passwordToken = createHash(passwordToken);
-    user.passwordTokenExpirationDate = passwordTokenExpirationDate;
+    user.passwordToken = finalVerificationToken;
+    user.passwordTokenExpirationDate = verificationTokenExpirationDate;
     await user.save();
 
     res.status(StatusCodes.OK).json({
@@ -308,10 +292,7 @@ const forgotPassword = async (req: Request, res: Response): Promise<any> => {
       email: user.email,
     });
   } catch (error: any) {
-    console.error(
-      "Error fetching file details:",
-      error.response?.data || error.message
-    );
+    console.error("Error fetching file details:", error);
 
     res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
       success: false,
@@ -366,10 +347,7 @@ const verifyEmailResetPassword = async (
         .json({ success: false, msg: "OTP invalid" });
     }
   } catch (error: any) {
-    console.error(
-      "Error fetching file details:",
-      error.response?.data || error.message
-    );
+    console.error("Error fetching file details:", error);
 
     res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
       success: false,
@@ -422,10 +400,7 @@ const changePassword = async (req: Request, res: Response): Promise<any> => {
       .status(StatusCodes.OK)
       .json({ success: true, msg: "Password changed successful" });
   } catch (error: any) {
-    console.error(
-      "Error fetching file details:",
-      error.response?.data || error.message
-    );
+    console.error("Error fetching file details:", error);
 
     res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
       success: false,

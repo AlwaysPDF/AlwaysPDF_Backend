@@ -26,6 +26,10 @@ import bodyParser from "body-parser";
 // local
 // import helmet from 'helmet'
 
+process.on("unhandledRejection", (reason) => {
+  console.error("Unhandled Rejection:", reason);
+});
+
 import xss from "xss-clean";
 import mongoSanitize from "express-mongo-sanitize";
 

@@ -84,7 +84,7 @@ const updateUser = async (req: Request, res: Response): Promise<any> => {
   } catch (error: any) {
     console.error(
       "Error updating details:",
-      error.response?.data || error.message
+      error
     );
 
     res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
@@ -154,7 +154,7 @@ const currentUser = async (req: Request, res: Response): Promise<any> => {
   } catch (error: any) {
     console.error(
       "Error fetchingdetails:",
-      error.response?.data || error.message
+      error
     );
 
     res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
