@@ -25,26 +25,41 @@ const finishOnboarding = async (req: Request, res: Response): Promise<any> => {
   try {
     const { email, fName, lName, password } = req.body;
     if (!email || !fName || !lName || !password) {
-      throw new BadRequestError("Please provide all values");
+      return res.status(StatusCodes.BAD_REQUEST).json({
+        success: false,
+        msg: "Please provide all values",
+      });
     }
 
     const user = await User.findOne({ email });
 
     if (!user) {
-      throw new NotFoundError("User doesn't exist");
+      return res.status(StatusCodes.NOT_FOUND).json({
+        success: false,
+        msg: "User doesn't exist",
+      });
     }
 
     if (!user.isVerified) {
-      throw new UnAuthenticatedError("Please verify your email");
+      return res.status(StatusCodes.UNAUTHORIZED).json({
+        success: false,
+        msg: "Please verify your email",
+      });
     }
 
     // Ensure required fields are not undefined
     if (user.numberOfEdits === undefined) {
-      throw new UnAuthenticatedError("Incomplete user data");
+      return res.status(StatusCodes.UNAUTHORIZED).json({
+        success: false,
+        msg: "Incomplete user data",
+      });
     }
 
     if (user?.numberOfEdits > 0) {
-      throw new BadRequestError("User can't edit profile again");
+      return res.status(StatusCodes.BAD_REQUEST).json({
+        success: false,
+        msg: "User can't edit profile again",
+      });
     }
 
     user.fName = fName;
@@ -66,7 +81,10 @@ const finishOnboarding = async (req: Request, res: Response): Promise<any> => {
       !user.isProfileComplete ||
       !user.tier
     ) {
-      throw new UnAuthenticatedError("Incomplete user data");
+      return res.status(StatusCodes.UNAUTHORIZED).json({
+        success: false,
+        msg: "Incomplete user data",
+      });
     }
 
     const tokenUser: TokenPayload = createTokenUser({
@@ -101,6 +119,13 @@ const finishOnboarding = async (req: Request, res: Response): Promise<any> => {
 const updateProfile = async (req: Request, res: Response): Promise<any> => {
   try {
     const { fName, lName, bio, profilePicture } = req.body;
+
+    if (!fName || !lName) {
+      return res.status(StatusCodes.BAD_REQUEST).json({
+        success: false,
+        msg: "Please provide first name and last name",
+      });
+    }
 
     const userId = req.user?.userId;
 
@@ -170,25 +195,6 @@ const updateProfile = async (req: Request, res: Response): Promise<any> => {
     });
   }
 };
-
-// const getSingleUser = async (req, res) => {
-//   const user = await User.findOne({ _id: req.params.id }).select("-password");
-
-//   if (!user) {
-//     throw new NotFoundError("User doesn't exist");
-//   }
-
-//   res.status(StatusCodes.OK).json({
-//     status: true,
-//     msg: "Fetched successfully",
-//     fName: user.fName,
-//     lName: user.lName,
-//     profileImage: user.profileImage,
-//     gender: user.gender,
-//     dateOfBirth: user.dateOfBirth,
-//     school: user.school,
-//   });
-// };
 
 const currentUser = async (req: Request, res: Response): Promise<any> => {
   try {
