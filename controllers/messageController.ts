@@ -116,6 +116,9 @@ const addMessage = async (req: Request, res: Response): Promise<any> => {
         msg: "Message added and AI response generated successfully.",
         aiMessage,
       });
+
+      user.totalQuestionAsked = (user.totalQuestionAsked ?? 0) + 1
+      await user.save()
     } else {
       res.status(StatusCodes.OK).json({
         success: false,

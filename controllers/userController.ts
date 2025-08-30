@@ -10,6 +10,10 @@ import {
 
 import { createTokenUser } from "../utils/index.js";
 import { TokenPayload } from "../type.js";
+import {
+  DeleteFileFromFirebase,
+  UploadFileToFirebase,
+} from "../helpers/index.js";
 
 // Extend the Express Request interface to include user information
 interface CustomRequest extends Request {
@@ -17,7 +21,7 @@ interface CustomRequest extends Request {
 }
 
 // update user with user.save()
-const updateUser = async (req: Request, res: Response): Promise<any> => {
+const finishOnboarding = async (req: Request, res: Response): Promise<any> => {
   try {
     const { email, fName, lName, password } = req.body;
     if (!email || !fName || !lName || !password) {
@@ -82,10 +86,7 @@ const updateUser = async (req: Request, res: Response): Promise<any> => {
       // token,
     });
   } catch (error: any) {
-    console.error(
-      "Error updating details:",
-      error
-    );
+    console.error("Error updating details:", error);
 
     res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
       success: false,
@@ -93,6 +94,79 @@ const updateUser = async (req: Request, res: Response): Promise<any> => {
         error.response?.data ||
         error.message ||
         "Something went wrong, please try again",
+    });
+  }
+};
+
+const updateProfile = async (req: Request, res: Response): Promise<any> => {
+  try {
+    const { fName, lName, bio, profilePicture } = req.body;
+
+    const userId = req.user?.userId;
+
+    if (!userId) {
+      return res.status(StatusCodes.UNAUTHORIZED).json({
+        success: false,
+        msg: "Unauthorized User",
+      });
+    }
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(StatusCodes.NOT_FOUND).json({
+        success: false,
+        msg: "User not found with this email",
+      });
+    }
+
+    // Upload new profile picture if provided and different from existing
+    if (profilePicture && profilePicture.startsWith("data:")) {
+      // Delete existing image if it exists
+      if (user.profilePicture) {
+        await DeleteFileFromFirebase(user.profilePicture);
+      }
+
+      const uploadResult = await UploadFileToFirebase(profilePicture, {
+        folder: "Users/ProfilePictures",
+        allowedFileTypes: ["image/png", "image/jpg", "image/jpeg"],
+        maxSizeInMB: 5,
+      });
+
+      user.profilePicture = uploadResult;
+    }
+
+    // Fields allowed to be updated
+    if (fName !== undefined) user.fName = fName;
+    if (lName !== undefined) user.lName = lName;
+    if (bio !== undefined) user.bio = bio;
+
+    user.isProfileComplete = !!(
+      fName &&
+      lName &&
+      user.bio &&
+      user.profilePicture
+    );
+
+    await user.save();
+
+    res.status(StatusCodes.OK).json({
+      success: true,
+      msg: "User profile updated successfully",
+      user: {
+        userId: user._id,
+        fName: user.fName,
+        lName: user.lName,
+        email: user.email,
+        bio: user.bio,
+        profilePicture: user.profilePicture,
+        isProfileComplete: user.isProfileComplete,
+      },
+    });
+  } catch (error) {
+    console.error("Error updating tutor profile", error);
+    res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
+      success: false,
+      msg: "Internal Server Error",
     });
   }
 };
@@ -131,6 +205,8 @@ const currentUser = async (req: Request, res: Response): Promise<any> => {
       !user.email ||
       !user.fName ||
       !user.lName ||
+      !user.bio ||
+      !user.profilePicture ||
       !user.isProfileComplete ||
       !user.tier
     ) {
@@ -144,6 +220,8 @@ const currentUser = async (req: Request, res: Response): Promise<any> => {
       email: user?.email,
       fName: user?.fName,
       lName: user?.lName,
+      bio: user?.bio,
+      profilePicture: user?.profilePicture,
       isProfileComplete: user?.isProfileComplete,
       tier: user?.tier,
     });
@@ -152,18 +230,67 @@ const currentUser = async (req: Request, res: Response): Promise<any> => {
       .status(StatusCodes.OK)
       .json({ success: true, msg: "Fetched Succesfully", user: tokenUser });
   } catch (error: any) {
-    console.error(
-      "Error fetchingdetails:",
-      error
-    );
+    console.error("Error fetchingdetails:", error);
 
     res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
       success: false,
-      msg:
-        error.response?.data ||
-        error.message ||
-        "Something went wrong, please try again",
+      msg: "Internal Server Error",
     });
+  }
+};
+
+// Change Password
+const changePassword = async (req: Request, res: Response): Promise<any> => {
+  try {
+    const userId = req.user?.userId;
+    const { currentPassword, password, confirmPassword } = req.body;
+
+    if (!currentPassword || !password || !confirmPassword) {
+      return res
+        .status(StatusCodes.BAD_REQUEST)
+        .json({ success: false, msg: "All fields are required." });
+    }
+
+    // Validate password criteria
+    // const passwordError = PasswordValidation(password);
+    // if (passwordError) {
+    //   return res.status(StatusCodes.BAD_REQUEST).json({
+    //     success: false,
+    //     msg: passwordError,
+    //   });
+    // }
+
+    if (password !== confirmPassword) {
+      return res
+        .status(StatusCodes.BAD_REQUEST)
+        .json({ success: false, msg: "New passwords do not match." });
+    }
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res
+        .status(StatusCodes.NOT_FOUND)
+        .json({ success: false, msg: "User not found." });
+    }
+
+    const isPasswordCorrect = await user.comparePassword(currentPassword);
+    if (!isPasswordCorrect) {
+      return res
+        .status(StatusCodes.BAD_REQUEST)
+        .json({ success: false, msg: "Old password is incorrect." });
+    }
+
+    user.password = password;
+    await user.save();
+
+    res
+      .status(StatusCodes.OK)
+      .json({ success: true, msg: "Password changed successfully." });
+  } catch (error) {
+    console.error("Error changing password:", error);
+    res
+      .status(StatusCodes.INTERNAL_SERVER_ERROR)
+      .json({ success: false, msg: "Internal Server Error" });
   }
 };
 
@@ -195,4 +322,4 @@ const currentUser = async (req: Request, res: Response): Promise<any> => {
 // // Call the function to add numberOfEdits to existing users
 // addNumberOfEditsToExistingUsers()
 
-export { updateUser, currentUser };
+export { finishOnboarding, updateProfile, currentUser, changePassword };

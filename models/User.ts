@@ -7,6 +7,8 @@ interface UserDocument extends Document {
   lName?: string;
   email: string;
   password?: string;
+  profilePicture?: string;
+  bio?: string;
   verificationToken?: string;
   verificationTokenExpirationDate?: Date;
   isVerified?: boolean;
@@ -18,16 +20,17 @@ interface UserDocument extends Document {
   numberOfEdits?: number;
   tier?: "Free" | "Premium" | "Enterprise";
   subscriptionStatus?: "Free" | "Active" | "Expired";
-  subscriptionStartDate?: Date | null; 
+  subscriptionStartDate?: Date | null;
   subscriptionEndDate?: Date | null;
-  subscriptionPlan?: "Monthly" | "Yearly"; 
+  subscriptionPlan?: "Monthly" | "Yearly";
   lastLoggedIn?: Date;
   numberOfUpload?: number;
+  totalQuestionAsked?: number;
+  activeConversations?: number;
 
   comparePassword(candidatePassword: string): Promise<boolean>;
   updateSubscriptionStatus(): Promise<void>;
 }
-
 
 const UserSchema = new Schema<UserDocument>(
   {
@@ -52,11 +55,16 @@ const UserSchema = new Schema<UserDocument>(
         message: "Please provide valid email",
       },
     },
-    // profileImage: {
-    //   type: String,
-    //   trim: true,
-    //   default: "",
-    // },
+    profilePicture: {
+      type: String,
+      trim: true,
+      default: "",
+    },
+    bio: {
+      type: String,
+      trim: true,
+      default: "",
+    },
     password: {
       type: String,
       default: "defaults",
@@ -122,6 +130,14 @@ const UserSchema = new Schema<UserDocument>(
       type: Number,
       default: 0,
     },
+    totalQuestionAsked: {
+      type: Number,
+      default: 0,
+    },
+    activeConversations: {
+      type: Number,
+      default: 0,
+    },
   },
   { timestamps: true }
 );
@@ -143,10 +159,9 @@ UserSchema.methods.updateSubscriptionStatus = async function () {
   if (this.subscriptionEndDate && new Date() > this.subscriptionEndDate) {
     this.subscriptionStatus = "Expired";
     this.tier = "Free"; // Downgrade to Free if expired
-    this.subscriptionPlan = null
+    this.subscriptionPlan = null;
     await this.save();
   }
 };
-
 
 export default mongoose.model("User", UserSchema);

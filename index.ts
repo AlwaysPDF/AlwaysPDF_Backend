@@ -57,6 +57,10 @@ import paymentRouter from "./routes/paymentRoutes.js";
 //webhook controller
 import { webhookHandler } from "./controllers/paymentController.js";
 
+// ask questions router
+import dashboardRouter from "./routes/dashboardRoutes.js";
+
+
 // firebase router
 // import firebaseRouter from "./routes/firebaseRoutes";
 
@@ -120,6 +124,7 @@ app.use("/api/v1/documentUpload", authenticateUser, documentUploadRouter);
 app.use("/api/v1/questions", authenticateUser, questionRouter);
 app.use("/api/v1/messages", authenticateUser, messageRouter);
 app.use("/api/v1/payment", paymentRouter);
+app.use("/api/v1/dashboard", dashboardRouter);
 
 // Base Route for the server
 app.get("/", (req: Request, res: Response) => {

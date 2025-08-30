@@ -8,6 +8,7 @@ import { BadRequestError, NotFoundError } from "../errors/index.js";
 
 import axios from "axios";
 import { GOOGLE_DRIVE_APIKEY } from "../utils/keys.js";
+import { DeleteFileFromFirebase } from "../helpers/index.js";
 
 const uploadDocumentByFile = async (
   req: Request,
@@ -216,8 +217,16 @@ const deleteSingleDocument = async (
   req: Request,
   res: Response
 ): Promise<any> => {
-  const { documentId } = req.params;
   try {
+    const { documentId } = req.params;
+
+    const user = await User.findOne({ _id: req.user?.userId });
+    if (!user) {
+      return res
+        .status(StatusCodes.NOT_FOUND)
+        .json({ sucess: false, msg: "User not found" });
+    }
+
     const document = await DocumentUpload.findOneAndDelete({ _id: documentId });
     if (!document) {
       return res.status(StatusCodes.BAD_REQUEST).json({
@@ -226,8 +235,15 @@ const deleteSingleDocument = async (
       });
     }
 
+    if (document.fileUrl) {
+      await DeleteFileFromFirebase(document.fileUrl);
+    }
+
     // Delete all messages related to the document
     await QuestionsMessage.deleteMany({ document: documentId });
+
+    user.numberOfUpload = Math.max((user.numberOfUpload ?? 0) - 1, 0);
+    await user.save();
 
     res
       .status(StatusCodes.OK)

@@ -1,7 +1,7 @@
 import mongoose, { Schema, Document } from "mongoose";
 
 interface DocumentUploadDocument extends Document {
-  userId?: mongoose.Schema.Types.ObjectId;
+  user?: mongoose.Schema.Types.ObjectId;
   uploadDate?: string;
   fileUrl?: string;
   fileType?: string;
@@ -12,7 +12,7 @@ interface DocumentUploadDocument extends Document {
 
 const DocumentUploadSchema = new Schema<DocumentUploadDocument>(
   {
-    userId: {
+    user: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
       required: true,
