@@ -150,7 +150,7 @@ const askDeepseekQuestion = async (
   }
   const chatCompletion = await deepseek.chat.completions.create({
     model: "deepseek-chat",
-    max_tokens: 10000,
+    max_tokens: 1024,
     n: 1,
     stop: null,
     temperature: 0.7,
