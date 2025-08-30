@@ -4,7 +4,7 @@ const router = express.Router();
 
 import { authenticateUser } from "../middleware/authentication.js";
 
-import { getDashboardStats } from "../controllers/dashboardController";
+import { getDashboardStats } from "../controllers/dashboardController.js";
 
 router.route("/stats").get(authenticateUser, getDashboardStats);
 
