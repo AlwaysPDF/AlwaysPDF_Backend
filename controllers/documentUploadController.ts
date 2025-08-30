@@ -57,7 +57,7 @@ const uploadDocumentByFile = async (
     }
 
     const newDocument = await DocumentUpload.create({
-      userId: user._id,
+      user: user._id,
       fileUrl,
       fileType,
       fileName,
@@ -159,7 +159,7 @@ const uploadDocumentByURL = async (
     }
 
     const newDocument = await DocumentUpload.create({
-      userId: user._id,
+      user: user._id,
       fileUrl,
       fileType: extension,
       fileName: name,
@@ -186,10 +186,15 @@ const allDocuments = async (req: Request, res: Response): Promise<any> => {
   try {
     const user = await User.findOne({ _id: req.user?.userId });
     if (!user) {
-      throw new NotFoundError("User not found");
+      // throw new NotFoundError("User not found");
+      return res.status(StatusCodes.NOT_FOUND).json({
+        success: false,
+        msg: "User not found",
+        // documents
+      });
     }
 
-    const documents = await DocumentUpload.find({ userId: user._id });
+    const documents = await DocumentUpload.find({ user: user._id });
 
     if (documents.length < 0) {
       res.status(StatusCodes.OK).json({
