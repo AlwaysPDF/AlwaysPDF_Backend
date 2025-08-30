@@ -184,7 +184,9 @@ const login = async (req: Request, res: Response): Promise<any> => {
       !user.email ||
       !user.fName ||
       !user.lName ||
-      !user.isProfileComplete ||
+      user.bio === undefined ||
+      user.profilePicture === undefined ||
+      user.isProfileComplete == undefined ||
       !user.tier
     ) {
       return res.status(StatusCodes.BAD_REQUEST).json({
@@ -201,7 +203,9 @@ const login = async (req: Request, res: Response): Promise<any> => {
       email: user?.email,
       fName: user?.fName,
       lName: user?.lName,
-      isProfileComplete: user?.isProfileComplete,
+      bio: user?.bio ?? "",
+      profilePicture: user?.profilePicture ?? "",
+      isProfileComplete: user?.isProfileComplete ?? false,
       tier: user?.tier,
     });
 
