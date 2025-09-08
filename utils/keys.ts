@@ -5,6 +5,7 @@ dotenv.config();
 export const getOpenAIKey = () => process.env.OPENAI_API_KEY;
 export const getDeepseekKey = () => process.env.DEEPSEEK_API_KEY;
 export const getAnthropicKey = () => process.env.ANTHROPIC_API_KEY;
+export const getGeminiKey = () => process.env.GEMINI_API_KEY;
 
 export const GOOGLE_DRIVE_APIKEY = process.env.GOOGLE_DRIVE_APIKEY;
 

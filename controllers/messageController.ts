@@ -4,6 +4,7 @@ import {
   askChatGPTQuestion,
   askClaudeQuestion,
   askDeepseekQuestion,
+  askGeminiQuestion,
 } from "./askQuestionsController.js";
 
 import { StatusCodes } from "http-status-codes";
@@ -87,8 +88,10 @@ const addMessage = async (req: Request, res: Response): Promise<any> => {
         aiResponse = await askChatGPTQuestion(question, pdfText);
       } else if (modelType === "claude") {
         aiResponse = await askClaudeQuestion(question, pdfText);
-      } else {
+      } else if (modelType === "deepseek") {
         aiResponse = await askDeepseekQuestion(question, pdfText);
+      } else if (modelType === "gemini") {
+        aiResponse = await askGeminiQuestion(question, pdfText);
       }
     } catch (error: any) {
       console.error("AI API error:", error?.message || error);
@@ -117,8 +120,8 @@ const addMessage = async (req: Request, res: Response): Promise<any> => {
         aiMessage,
       });
 
-      user.totalQuestionAsked = (user.totalQuestionAsked ?? 0) + 1
-      await user.save()
+      user.totalQuestionAsked = (user.totalQuestionAsked ?? 0) + 1;
+      await user.save();
     } else {
       res.status(StatusCodes.OK).json({
         success: false,

@@ -5,8 +5,14 @@ import { StatusCodes } from "http-status-codes";
 import axios from "axios";
 import OpenAI from "openai";
 import Anthropic from "@anthropic-ai/sdk";
+import { GoogleGenAI } from "@google/genai";
 import DocumentUpload from "../models/DocumentUpload.js";
-import { getOpenAIKey, getDeepseekKey, getAnthropicKey } from "../utils/keys.js";
+import {
+  getOpenAIKey,
+  getDeepseekKey,
+  getAnthropicKey,
+  getGeminiKey,
+} from "../utils/keys.js";
 // import { BadRequestError } from "../errors/index.ts";
 
 // / New (i.e., OpenAI NodeJS SDK v4)
@@ -16,8 +22,17 @@ const deepseek = new OpenAI({
   baseURL: "https://api.deepseek.com",
   apiKey: getDeepseekKey(),
 });
+
 const claude = new Anthropic({
   apiKey: getAnthropicKey(), // This is the default and can be omitted
+});
+
+const gemini = new GoogleGenAI({ apiKey: getGeminiKey() });
+
+// Setup Qwen client
+const qwenClient = new OpenAI({
+  apiKey: process.env.DASHSCOPE_API_KEY,
+  baseURL: "https://dashscope-intl.aliyuncs.com/compatible-mode/v1",  // Singapore region
 });
 
 // let pdfText: string | "" = "";
@@ -177,4 +192,47 @@ const askDeepseekQuestion = async (
   return answer;
 };
 
-export { Upload, askChatGPTQuestion, askClaudeQuestion, askDeepseekQuestion };
+const askGeminiQuestion = async (
+  question: string,
+  pdfText: string
+): Promise<any> => {
+  if (!question || !pdfText) {
+    throw new Error("Unexpected response structure from OpenAI API.");
+  }
+
+  const prompt = `
+    You are an AI assistant. Provide concise and accurate answers.
+    
+    PDF Content:
+    ${pdfText}
+
+    Question:
+    ${question}
+  `;
+
+  const result = await gemini.models.generateContent({
+    model: "gemini-2.0-flash", // or "gemini-1.5-pro", "gemini-2.5-flash" depending on what you want
+    contents: [{ role: "user", parts: [{ text: prompt }] }],
+  });
+
+  if (!result) {
+    throw new Error("Unexpected response structure from Gemini API.");
+  }
+
+  // ✅ In the new SDK, use .text
+  const answer = result.text;
+
+  if (!answer) {
+    throw new Error("Unexpected response structure from Gemini API.");
+  }
+
+  return answer;
+};
+
+export {
+  Upload,
+  askChatGPTQuestion,
+  askClaudeQuestion,
+  askDeepseekQuestion,
+  askGeminiQuestion,
+};
